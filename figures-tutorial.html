@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Шахматы - Упрощенный интерфейс</title>
+    <style>
+        /* Существующие стили остаются без изменений */
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #0a192f, #0d1b2a);
+            color: #fff;
+        }
+
+        canvas {
+            display: block;
+            pointer-events: auto;
+        }
+
+        .axis-btn {
+            background: #4cc9f0;
+            border: none;
+            color: #0a192f;
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .axis-btn:hover {
+            background: #7bdff9;
+            transform: scale(1.05);
+        }
+
+        .axis-btn.active {
+            background: #ff5722;
+            color: white;
+        }
+
+        .return-btn {
+            background: #4cc9f0;
+            border: none;
+            color: #0a192f;
+            padding: 12px 20px;
+            margin: 15px 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            width: calc(100% - 10px);
+            text-align: center;
+        }
+
+        .return-btn:hover {
+            background: #7bdff9;
+            transform: scale(1.05);
+        }
+
+        #right-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding-right: 10px;
+            pointer-events: none;
+        }
+
+        #right-panel>* {
+            pointer-events: auto;
+        }
+
+        #right-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #right-panel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        #right-panel::-webkit-scrollbar-thumb {
+            background: #4cc9f0;
+            border-radius: 4px;
+        }
+
+        #right-panel::-webkit-scrollbar-thumb:hover {
+            background: #7bdff9;
+        }
+
+        .panel-section {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 100, 200, 0.5);
+        }
+
+        .panel-section h3 {
+            margin-top: 0;
+            color: #4cc9f0;
+            text-shadow: 0 0 5px #4cc9f0;
+        }
+
+        #game-info {
+            font-size: 16px;
+            text-align: center;
+        }
+
+        #game-status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .status-check {
+            background-color: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+            border: 1px solid #ff9800;
+        }
+
+        .status-checkmate {
+            background-color: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            border: 1px solid #f44336;
+            animation: pulse 1.5s infinite;
+        }
+
+        .buttons-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .color-picker-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .color-input-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-input-container label {
+            min-width: 80px;
+        }
+
+        .color-input {
+            width: 100%;
+            height: 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* Стили для левой панели */
+        #left-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 320px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #left-panel>* {
+            pointer-events: auto;
+        }
+
+        #left-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #left-panel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        #left-panel::-webkit-scrollbar-thumb {
+            background: #4cc9f0;
+            border-radius: 4px;
+        }
+
+        #left-panel::-webkit-scrollbar-thumb:hover {
+            background: #7bdff9;
+        }
+
+        .folder-input-label {
+            background: #4cc9f0;
+            border: none;
+            color: #0a192f;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            text-align: center;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .folder-input-label:hover {
+            background: #7bdff9;
+            transform: scale(1.05);
+        }
+
+        #folder-input {
+            display: none;
+        }
+
+        .accordion-header {
+            background: #4cc9f0;
+            color: #0a192f;
+            cursor: pointer;
+            padding: 10px;
+            width: 100%;
+            text-align: left;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            margin-top: 5px;
+            transition: all 0.3s;
+        }
+
+        .accordion-header:hover {
+            background: #7bdff9;
+        }
+
+        .accordion-header:after {
+            content: '\25BC';
+            font-size: 13px;
+            color: #0a192f;
+            float: right;
+            margin-left: 5px;
+        }
+
+        .accordion-header.active:after {
+            content: '\25B2';
+        }
+
+        .accordion-content {
+            padding: 0 10px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 0 0 5px 5px;
+        }
+
+        .position-btn {
+            background: #4cc9f0;
+            border: none;
+            color: #0a192f;
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            width: calc(50% - 10px);
+        }
+
+        .position-btn:hover {
+            background: #7bdff9;
+            transform: scale(1.05);
+        }
+
+        .positions-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Левая панель -->
+    <div id="left-panel">
+        <!-- Секция загрузки позиций -->
+        <div class="panel-section">
+            <h3>Загрузка позиций</h3>
+            <label for="folder-input" class="folder-input-label">Выбрать папку с позициями</label>
+            <input type="file" id="folder-input" webkitdirectory directory multiple>
+            <button id="clear-board" class="return-btn">Очистить доску</button>
+        </div>
+
+        <!-- Аккордеон для типов фигур -->
+        <div class="panel-section">
+            <h3>Позиции фигур</h3>
+
+            <button class="accordion-header">Пешки</button>
+            <div class="accordion-content">
+                <div id="pawn-positions" class="positions-container">
+                    <!-- Кнопки с номерами позиций для пешек -->
+                </div>
+            </div>
+
+            <button class="accordion-header">Ладьи</button>
+            <div class="accordion-content">
+                <div id="rook-positions" class="positions-container">
+                    <!-- Кнопки с номерами позиций для ладей -->
+                </div>
+            </div>
+
+            <button class="accordion-header">Кони</button>
+            <div class="accordion-content">
+                <div id="knight-positions" class="positions-container">
+                    <!-- Кнопки с номерами позиций для коней -->
+                </div>
+            </div>
+
+            <button class="accordion-header">Слоны</button>
+            <div class="accordion-content">
+                <div id="bishop-positions" class="positions-container">
+                    <!-- Кнопки с номерами позиций для слонов -->
+                </div>
+            </div>
+
+            <button class="accordion-header">Триорты</button>
+            <div class="accordion-content">
+                <div id="triort-positions" class="positions-container">
+                    <!-- Кнопки с номерами позиций для триортов -->
+                </div>
+            </div>
+
+            <button class="accordion-header">Ферзи</button>
+            <div class="accordion-content">
+                <div id="queen-positions" class="positions-container">
+                    <!-- Кнопки с номерами позиций для ферзей -->
+                </div>
+            </div>
+
+            <button class="accordion-header">Короли</button>
+            <div class="accordion-content">
+                <div id="king-positions" class="positions-container">
+                    <!-- Кнопки с номерами позиций для королей -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Правая панель (остается без изменений) -->
+    <div id="right-panel">
+        <!-- Секция информации о игре -->
+        <div id="game-info" class="panel-section">
+            <h3>Текущая игра</h3>
+            <div>
+                Текущий игрок: <span id="current-player">Белые</span>
+                <div id="game-status"></div>
+            </div>
+        </div>
+
+        <!-- Секция настроек -->
+        <div class="panel-section">
+            <h3>Настройки</h3>
+            <div>
+                <h4>Увеличить промежутки вдоль оси</h4>
+                <div class="buttons-row">
+                    <button id="axis-x" class="axis-btn">Ось X</button>
+                    <button id="axis-y" class="axis-btn">Ось Y</button>
+                    <button id="axis-z" class="axis-btn">Ось Z</button>
+                    <button id="axis-none" class="axis-btn active">Без увеличения</button>
+                </div>
+
+                <div>
+                    <h4>Цвета</h4>
+                    <div class="color-picker-container">
+                        <div class="color-input-container">
+                            <label for="bg-color">Фон:</label>
+                            <input type="color" id="bg-color" class="color-input" value="#FFFFFF">
+                        </div>
+                        <div class="color-input-container">
+                            <label for="board-color-1">Доска цвет 1:</label>
+                            <input type="color" id="board-color-1" class="color-input" value="#1E90FF">
+                        </div>
+                        <div class="color-input-container">
+                            <label for="board-color-2">Доска цвет 2:</label>
+                            <input type="color" id="board-color-2" class="color-input" value="#0a192f">
+                        </div>
+                        <div class="color-input-container">
+                            <label for="white-figures-color">Белые фигуры:</label>
+                            <input type="color" id="white-figures-color" class="color-input" value="#FFFFFF">
+                        </div>
+                        <div class="color-input-container">
+                            <label for="black-figures-color">Черные фигуры:</label>
+                            <input type="color" id="black-figures-color" class="color-input" value="#000000">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопка возврата в игру -->
+        <button id="return-to-game" class="return-btn">Вернуться в игру</button>
+    </div>
+
+    <!-- Подключаем Three.js и OrbitControls из CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- Подключаем ваш скрипт -->
+    <script src="chess-engine.js"></script>
+    <script src="graphics.js"></script>
+    <script src="game.js"></script>
+    <script src="network.js"></script>
+    <script src="figures-tutorial.js"></script>
+
+    <!-- Упрощенный обработчик событий -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Инициализация шахматной доски
+            ChessEngine.InitGame();
+            GraphicsEngine.createAndFillBoardOnPole(ChessEngine.Pole);
+            GraphicsEngine.animate();
+
+            // Обработчики для кнопок осей
+            document.querySelectorAll('.axis-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('.axis-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    if (window.chessGame) {
+                        window.chessGame.handleAxisChange(this.id);
+                    }
+                });
+            });
+
+            // Обработчик для кнопки возврата в игру
+            document.getElementById('return-to-game').addEventListener('click', function () {
+                window.location.href = 'index.html'; // Замените на нужный URL
+            });
+
+            // Обработчики для цветовых пикеров
+            const colorPickers = {
+                'bg-color': (value) => window.chessGame?.changeColor('background', value),
+                'board-color-1': (value) => window.chessGame?.changeColor('board1', value),
+                'board-color-2': (value) => window.chessGame?.changeColor('board2', value),
+                'white-figures-color': (value) => window.chessGame?.changeColor('whiteFigure', value),
+                'black-figures-color': (value) => window.chessGame?.changeColor('blackFigure', value)
+            };
+
+            Object.keys(colorPickers).forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', (e) => colorPickers[id](e.target.value));
+                }
+            });
+
+            // Обработчик для аккордеона
+            const accordionHeaders = document.querySelectorAll('.accordion-header');
+            accordionHeaders.forEach(header => {
+                header.addEventListener('click', function () {
+                    this.classList.toggle('active');
+                    const content = this.nextElementSibling;
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    }
+                });
+            });
+
+            // Обработчик для выбора папки
+            document.getElementById('folder-input').addEventListener('change', function (e) {
+                const files = e.target.files;
+                processPositionFiles(files);
+            });
+
+            // Обработчик для кнопки очистки доски
+            document.getElementById('clear-board').addEventListener('click', function () {
+                ChessEngine.FillPole();
+                GraphicsEngine.createAndFillBoardOnPole(ChessEngine.Pole);
+            });
+        });
+
+        // Функция для обработки файлов позиций
+        function processPositionFiles(files) {
+            // Очищаем предыдущие кнопки
+            const containers = document.querySelectorAll('.positions-container');
+            containers.forEach(container => {
+                container.innerHTML = '';
+            });
+
+            // Обрабатываем каждый файл
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileName = file.name;
+
+                // Пропускаем не текстовые файлы
+                if (!fileName.endsWith('.txt')) continue;
+
+                // Извлекаем тип фигуры и номер из имени файла
+                const fileNameParts = fileName.split('_');
+                if (fileNameParts.length < 2) continue;
+
+                const figureType = fileNameParts[0].toLowerCase(); // pawn, rook, knight, etc.
+                let figureNumber = fileNameParts[1].split('.')[0]; // удаляем расширение .txt
+
+                // Определяем контейнер для этого типа фигуры
+                const containerId = `${figureType}-positions`;
+                const container = document.getElementById(containerId);
+
+                if (!container) continue;
+
+                // Создаем кнопку для этой позиции
+                const button = document.createElement('button');
+                button.className = 'position-btn';
+                button.textContent = figureNumber;
+                button.dataset.fileName = fileName;
+
+                // Добавляем обработчик для загрузки позиции
+                button.addEventListener('click', function () {
+                    loadPositionFromFile(file);
+                });
+
+                container.appendChild(button);
+            }
+        }
+
+        // Функция для загрузки позиции из файла
+        function loadPositionFromFile(file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const content = e.target.result;
+                    const lines = content.split('\n');
+
+                    // Ожидаем формат: x,y,z,figureType,color
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (!line) continue;
+
+                        const parts = line.split(',');
+                        if (parts.length < 5) continue;
+
+                        const x = parseInt(parts[0]);
+                        const y = parseInt(parts[1]);
+                        const z = parseInt(parts[2]);
+                        const figureType = parts[3];
+                        const color = parts[4];
+
+                        // Создаем фигуру
+                        let figure = null;
+                        if (color === 'White') {
+                            switch (figureType) {
+                                case 'Pawn': figure = new ChessEngine.WhitePawn(); break;
+                                case 'Rook': figure = new ChessEngine.WhiteRook(); break;
+                                case 'Knight': figure = new ChessEngine.WhiteKnight(); break;
+                                case 'Bishop': figure = new ChessEngine.WhiteBishop(); break;
+                                case 'Triort': figure = new ChessEngine.WhiteTriort(); break;
+                                case 'Queen': figure = new ChessEngine.WhiteQueen(); break;
+                                case 'King': figure = new ChessEngine.WhiteKing(); break;
+                            }
+                        } else {
+                            switch (figureType) {
+                                case 'Pawn': figure = new ChessEngine.BlackPawn(); break;
+                                case 'Rook': figure = new ChessEngine.BlackRook(); break;
+                                case 'Knight': figure = new ChessEngine.BlackKnight(); break;
+                                case 'Bishop': figure = new ChessEngine.BlackBishop(); break;
+                                case 'Triort': figure = new ChessEngine.BlackTriort(); break;
+                                case 'Queen': figure = new ChessEngine.BlackQueen(); break;
+                                case 'King': figure = new ChessEngine.BlackKing(); break;
+                            }
+                        }
+
+                        // Размещаем фигуру на доске
+                        if (figure && x >= 0 && x < 6 && y >= 0 && y < 6 && z >= 0 && z < 8) {
+                            ChessEngine.Pole[x][y][z] = figure;
+                        }
+                    }
+
+                    // Обновляем графическое представление
+                    GraphicsEngine.createAndFillBoardOnPole(ChessEngine.Pole);
+
+                } catch (error) {
+                    console.error('Ошибка при загрузке позиции:', error);
+                    alert('Ошибка при загрузке позиции из файла: ' + file.name);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Обработчик для контекстного меню (правой кнопки мыши)
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            return false;
+        });
+
+        // Добавляем обработчик события resize
+        window.addEventListener('resize', () => GraphicsEngine.onWindowResize(), false);
+    </script>
+</body>
+
+</html>
