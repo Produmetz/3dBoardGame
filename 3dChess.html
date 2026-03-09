@@ -316,59 +316,83 @@
             max-height: 0;
         }
 
-        @media (max-width: 768px) {
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Мобильная версия */
+        @media screen and (max-width: 768px) {
             body {
-                display: flex;
-                flex-direction: column;
-                overflow: hidden;
-                /* или auto, но скрываем, чтобы не было двойной прокрутки */
-                margin: 0;
-                height: 100vh;
+                padding-bottom: 80px;
+                /* чтобы кнопка не перекрывала контент */
+                overflow-y: auto;
+                /* разрешаем прокрутку страницы */
             }
 
             #left-panel,
             #right-panel {
-                position: relative !important;
-                /* переопределяем absolute */
-                width: 100% !important;
-                max-height: 40vh;
-                /* увеличьте при необходимости */
-                overflow-y: auto;
-                /* добавим прокрутку внутри панелей */
-                background: rgba(0, 0, 0, 0.9);
-                /* фон для наглядности */
-                z-index: 1000;
-                /* поднимаем над canvas */
-                box-sizing: border-box;
+                position: relative;
+                /* убираем абсолютное позиционирование */
+                top: auto;
+                left: auto;
+                right: auto;
+                width: calc(100% - 40px);
+                /* почти вся ширина с отступами */
+                max-width: 100%;
+                margin: 20px auto;
+                /* центрируем и добавляем вертикальные отступы */
                 padding: 10px;
-                margin: 0;
-            }
-
-            #right-panel {
-                order: 1;
+                box-sizing: border-box;
             }
 
             #left-panel {
-                order: 2;
+                margin-bottom: 0;
+                /* убираем нижний отступ, чтобы панели шли вплотную */
             }
 
-            canvas {
-                order: 0;
-                flex: 1;
-                width: 100% !important;
-                height: auto !important;
-                display: block;
-                z-index: 1;
+            #right-panel {
+                margin-top: 0;
+                /* убираем верхний отступ */
             }
 
-            /* скрываем кнопку переключения панелей, если она мешает */
+            /* Кнопка переключения панелей – по центру внизу */
             #toggle-panels {
-                display: none;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                right: auto;
+                /* отменяем предыдущее значение right: 10px */
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                background: rgba(76, 201, 240, 0.9);
+                color: #0a192f;
+                font-size: 24px;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+                z-index: 100;
             }
-        }
 
-        .hidden {
-            display: none !important;
+            /* Уменьшаем размеры панелей для более компактного вида */
+            .panel-section {
+                padding: 10px;
+            }
+
+            .buttons-row {
+                gap: 5px;
+            }
+
+            .axis-btn,
+            .game-btn {
+                padding: 6px 10px;
+                font-size: 14px;
+            }
+
+            /* Корректируем поле ввода чата и список комнат */
+            .network-input {
+                width: 100%;
+                box-sizing: border-box;
+            }
         }
     </style>
 </head>
