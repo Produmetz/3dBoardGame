@@ -28,6 +28,12 @@ const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
 directionalLight2.position.set(-10, -10, -10);
 scene.add(directionalLight2);
 
+controls.enablePan = true;
+controls.enableZoom = true;
+controls.enableRotate = true;
+controls.touchRotate = true;
+controls.touchZoom = true;
+controls.touchPan = true;
 
 // Параметры сетки
 const gridSizeX = 6;

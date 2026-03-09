@@ -315,11 +315,67 @@
         .sub-section.collapsed .sub-content {
             max-height: 0;
         }
+
+        @media (max-width: 768px) {
+            body {
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                /* или auto, но скрываем, чтобы не было двойной прокрутки */
+                margin: 0;
+                height: 100vh;
+            }
+
+            #left-panel,
+            #right-panel {
+                position: relative !important;
+                /* переопределяем absolute */
+                width: 100% !important;
+                max-height: 40vh;
+                /* увеличьте при необходимости */
+                overflow-y: auto;
+                /* добавим прокрутку внутри панелей */
+                background: rgba(0, 0, 0, 0.9);
+                /* фон для наглядности */
+                z-index: 1000;
+                /* поднимаем над canvas */
+                box-sizing: border-box;
+                padding: 10px;
+                margin: 0;
+            }
+
+            #right-panel {
+                order: 1;
+            }
+
+            #left-panel {
+                order: 2;
+            }
+
+            canvas {
+                order: 0;
+                flex: 1;
+                width: 100% !important;
+                height: auto !important;
+                display: block;
+                z-index: 1;
+            }
+
+            /* скрываем кнопку переключения панелей, если она мешает */
+            #toggle-panels {
+                display: none;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 
 <body>
-
+    <button id="toggle-panels" class="game-btn"
+        style="position: fixed; bottom: 10px; right: 10px; z-index: 20;">☰</button>
     <!-- Левая панель с подсказками и историей ходов -->
     <div id="left-panel">
         <!-- Секция подсказок (по умолчанию свёрнута) -->

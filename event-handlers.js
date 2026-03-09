@@ -118,3 +118,10 @@ canvas.addEventListener('mouseup', (e) => {
         window.chessGame.isDragging = false;
     }
 });
+
+document.getElementById('toggle-panels').addEventListener('click', () => {
+    const left = document.getElementById('left-panel');
+    const right = document.getElementById('right-panel');
+    left.classList.toggle('hidden');
+    right.classList.toggle('hidden');
+});
