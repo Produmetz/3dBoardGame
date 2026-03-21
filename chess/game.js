@@ -27,7 +27,7 @@ class Game {
 
         // Добавляем обработчики событий
         this.setupEventListeners();
-
+        
         // Запускаем анимацию
         animate();
 
@@ -48,54 +48,32 @@ class Game {
     }
 
     setupEventListeners() {
-        let touchStartX, touchStartY;
+        let mouseDownX, mouseDownY;
 
-        canvas.addEventListener('mousedown', (event) => this.handlePointerDown(event));
-        canvas.addEventListener('touchstart', (event) => {
-            event.preventDefault(); // предотвращаем прокрутку страницы
-            const touch = event.touches[0];
-            this.handlePointerDown({ clientX: touch.clientX, clientY: touch.clientY, button: 0 });
-        });
-
-        canvas.addEventListener('mousemove', (event) => this.handlePointerMove(event));
-        canvas.addEventListener('touchmove', (event) => {
-            event.preventDefault();
-            const touch = event.touches[0];
-            this.handlePointerMove({ clientX: touch.clientX, clientY: touch.clientY, buttons: 1 });
-        });
-
-        canvas.addEventListener('mouseup', (event) => this.handlePointerUp(event));
-        canvas.addEventListener('touchend', (event) => {
-            event.preventDefault();
-            this.handlePointerUp({ button: 0 });
-        });
-    }
-
-    handlePointerDown(event) {
-        if (event.button === 0) {
-            this.pointerDownX = event.clientX;
-            this.pointerDownY = event.clientY;
-            this.isDragging = false;
-        }
-    }
-
-    handlePointerMove(event) {
-        if (event.buttons === 1) {
-            const dx = Math.abs(event.clientX - this.pointerDownX);
-            const dy = Math.abs(event.clientY - this.pointerDownY);
-            if (dx > this.dragThreshold || dy > this.dragThreshold) {
-                this.isDragging = true;
+        canvas.addEventListener('mousedown', (event) => {
+            if (event.button === 0) { // Левая кнопка мыши
+                mouseDownX = event.clientX;
+                mouseDownY = event.clientY;
+                this.isDragging = false;
             }
-        }
-    }
+        });
 
-    handlePointerUp(event) {
-        if (event.button === 0 && !this.isDragging) {
-            // вызываем handleCanvasClick с координатами последнего touch/mouse
-            if (this.lastPointerX && this.lastPointerY) {
-                this.handleCanvasClick({ clientX: this.lastPointerX, clientY: this.lastPointerY });
+        canvas.addEventListener('mousemove', (event) => {
+            if (event.buttons === 1) { // Левая кнопка зажата
+                const dx = Math.abs(event.clientX - mouseDownX);
+                const dy = Math.abs(event.clientY - mouseDownY);
+
+                if (dx > this.dragThreshold || dy > this.dragThreshold) {
+                    this.isDragging = true;
+                }
             }
-        }
+        });
+
+        canvas.addEventListener('click', (event) => {
+            if (event.button === 0 && !this.isDragging) {
+                this.handleCanvasClick(event);
+            }
+        });
     }
 
     handleCanvasClick(event) {

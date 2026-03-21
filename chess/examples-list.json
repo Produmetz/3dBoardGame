@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Pawn_1.txt",
+    "description": "Пешка: базовый ход на одну/две клетку(и) вперёд"
+  },
+  {
+    "name": "Pawn_2.txt",
+    "description": "Пешка: взятие фигуры противника"
+  },
+  {
+    "name": "Rook_1.txt",
+    "description": "Ладья: движение по горизонтали"
+  },
+  {
+    "name": "Knight_1.txt",
+    "description": "Конь: движение буквой 'Г'"
+  },
+  {
+    "name": "Bishop_1.txt",
+    "description": "Слон: движение по диагонали"
+  },
+  {
+    "name": "Triort_1.txt",
+    "description": "Триорт: трехмерное движение"
+  },
+  {
+    "name": "Queen_1.txt",
+    "description": "Ферзь: комбинированное движение"
+  },
+  {
+    "name": "King_1.txt",
+    "description": "Король: движение на одну клетку"
+  }
+]

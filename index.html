@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>3D Chess & Go – Simple 3D Board Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', sans-serif;
+            background: #0a0f1a;
+            color: #eef4ff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1.5rem;
+            position: relative;
+        }
+
+        /* subtle grid background */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(rgba(76, 201, 240, 0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(76, 201, 240, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: #c9e9ff;
+            letter-spacing: -0.3px;
+        }
+
+        .header .sub {
+            font-size: 1rem;
+            color: #9bb4d0;
+            margin-top: 0.5rem;
+            border-top: 1px solid #2c3e4e;
+            display: inline-block;
+            padding-top: 0.5rem;
+        }
+
+        .header p {
+            max-width: 700px;
+            margin: 1rem auto 0;
+            font-size: 0.95rem;
+            color: #b7c9e2;
+            line-height: 1.4;
+        }
+
+        /* language switcher */
+        .lang-switch {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: #1e2a36;
+            border-radius: 30px;
+            padding: 0.2rem;
+            display: flex;
+            gap: 0.2rem;
+            font-size: 0.8rem;
+        }
+        .lang-btn {
+            background: transparent;
+            border: none;
+            color: #9bb4d0;
+            cursor: pointer;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            transition: 0.2s;
+            font-weight: normal;
+        }
+        .lang-btn.active {
+            background: #2c4c6c;
+            color: white;
+        }
+        .lang-btn:hover:not(.active) {
+            background: #2a3a4a;
+            color: #eef4ff;
+        }
+
+        /* card grid */
+        .games-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            justify-content: center;
+            margin: 2rem 0 2rem;
+        }
+
+        .game-card {
+            background: rgba(15, 25, 45, 0.85);
+            backdrop-filter: blur(6px);
+            border-radius: 1.5rem;
+            overflow: hidden;
+            width: 340px;
+            transition: transform 0.2s ease, box-shadow 0.2s;
+            border: 1px solid #2a3a4a;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .game-card:hover {
+            transform: translateY(-6px);
+            border-color: #4a6a8a;
+            box-shadow: 0 12px 20px -8px rgba(0,0,0,0.4);
+        }
+
+        .card-icon {
+            background: #0e1622;
+            text-align: center;
+            padding: 1.8rem 0 1rem;
+            font-size: 3.5rem;
+            border-bottom: 1px solid #2a3a4a;
+        }
+
+        .card-content {
+            padding: 1.5rem;
+            text-align: center;
+            flex: 1;
+        }
+
+        .game-card h2 {
+            font-size: 1.8rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #cce6ff;
+        }
+
+        .game-card p {
+            color: #b0c4de;
+            font-size: 0.9rem;
+            margin: 0.75rem 0;
+            line-height: 1.4;
+        }
+
+        .feature-list {
+            text-align: left;
+            margin: 1rem 0;
+            font-size: 0.85rem;
+            color: #9bb4d0;
+            border-top: 1px dashed #2a3a4a;
+            padding-top: 0.8rem;
+        }
+
+        .feature-list span {
+            display: block;
+            margin: 0.3rem 0;
+        }
+
+        .badge {
+            background: #1e2a36;
+            display: inline-block;
+            padding: 0.2rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: #8bb5e0;
+            margin-top: 0.5rem;
+        }
+
+        .play-btn {
+            background: #2c4c6c;
+            border: none;
+            color: white;
+            font-weight: normal;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            margin-top: 1rem;
+            display: inline-block;
+            transition: 0.2s;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .game-card:hover .play-btn {
+            background: #3e6a8c;
+        }
+
+        /* features row */
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 1rem;
+            margin: 2rem 0 1.5rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 1.5rem;
+            padding: 1.2rem;
+            border: 1px solid #253544;
+        }
+
+        .feature {
+            flex: 1;
+            text-align: center;
+            min-width: 130px;
+        }
+
+        .feature h4 {
+            font-size: 1rem;
+            color: #8fcbff;
+            margin-bottom: 0.2rem;
+        }
+
+        .feature p {
+            font-size: 0.8rem;
+            color: #a6c1dd;
+        }
+
+        footer {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #7a8eaa;
+            border-top: 1px solid #1f2e3a;
+            padding-top: 1.2rem;
+        }
+
+        @media (max-width: 750px) {
+            .games-grid {
+                gap: 1.2rem;
+            }
+            .game-card {
+                width: 280px;
+            }
+            .header h1 {
+                font-size: 2rem;
+            }
+            .lang-switch {
+                position: static;
+                margin-bottom: 1rem;
+                justify-content: center;
+                display: inline-flex;
+            }
+            .header {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .game-card {
+                width: 100%;
+            }
+            .features {
+                flex-direction: column;
+                align-items: center;
+            }
+            .feature {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="lang-switch">
+                <button class="lang-btn" data-lang="en">EN</button>
+                <button class="lang-btn" data-lang="ru">РУС</button>
+            </div>
+            <h1 id="title-main">3D Chess & Go</h1>
+            <div class="sub" id="subtitle">experimental 3D board games • basic Three.js implementation</div>
+            <p id="header-desc">Two classic games visualized in 3D space. Camera can be rotated/zoomed, pieces are simple cubes, 
+            and the logic covers standard rules (with some limitations). Network play works if you have a WebSocket server.</p>
+        </div>
+
+        <div class="games-grid">
+            <!-- Chess Card: corrected link to chess.html -->
+            <a href="./chess/chess.html" class="game-card" id="chess-card">
+                <div class="card-icon">♜ ♞ ♝</div>
+                <div class="card-content">
+                    <h2 id="chess-title">Chess</h2>
+                    <p id="chess-desc">Standard chess rules, 3D board (6x6x8 layout). Move highlighting, check detection, undo, save/load. 
+                    No AI – human vs human or network.</p>
+                    <div class="feature-list">
+                        <span id="chess-feat1">✓ 3D camera (rotate/zoom)</span>
+                        <span id="chess-feat2">✓ Network rooms (with chat)</span>
+                        <span id="chess-feat3">✓ Custom colors / board appearance</span>
+                        <span id="chess-feat4">✓ Undo & move history</span>
+                    </div>
+                    <div class="badge" id="chess-badge">local or online</div>
+                    <div class="play-btn" id="chess-play">▶ Play Chess</div>
+                </div>
+            </a>
+
+            <!-- Go Card: corrected link to go.html -->
+            <a href="./go/go.html" class="game-card" id="go-card">
+                <div class="card-icon">⚫ ⚪</div>
+                <div class="card-content">
+                    <h2 id="go-title">Go</h2>
+                    <p id="go-desc">Go rules on a 3D grid (adjustable size, default 6x6x8). Territory scoring, komi, pass/resign, 
+                    capture detection, and network multiplayer.</p>
+                    <div class="feature-list">
+                        <span id="go-feat1">✓ Adjustable board dimensions (X,Y,Z)</span>
+                        <span id="go-feat2">✓ Stone capture & Ko rule (basic)</span>
+                        <span id="go-feat3">✓ Network play & chat</span>
+                        <span id="go-feat4">✓ Save/load game state</span>
+                    </div>
+                    <div class="badge" id="go-badge">3D board, variable size</div>
+                    <div class="play-btn" id="go-play">▶ Play Go</div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Feature summary -->
+        <div class="features">
+            <div class="feature">
+                <h4 id="feat1-title">🎮 3D controls</h4>
+                <p id="feat1-desc">Right‑click drag to rotate, scroll to zoom. Axis‑zoom mode available.</p>
+            </div>
+            <div class="feature">
+                <h4 id="feat2-title">🌐 Network</h4>
+                <p id="feat2-desc">Connect to a WebSocket server, create/join rooms, play online.</p>
+            </div>
+            <div class="feature">
+                <h4 id="feat3-title">🎨 Visuals</h4>
+                <p id="feat3-desc">Change board colors, piece colors, background. Simple but adjustable.</p>
+            </div>
+            <div class="feature">
+                <h4 id="feat4-title">💾 Persistence</h4>
+                <p id="feat4-desc">Export/import games, undo moves, view move history.</p>
+            </div>
+        </div>
+
+        <footer>
+            <p id="footer-text">Built with Three.js • Graphics are basic (cubes + lighting) • Physics = none, just game logic.<br>
+            Not a commercial product – a hobby project to explore 3D board game mechanics.<br>
+            <span style="color:#5f7f9f;" id="footer-path">Files are organized: /chess/ and /go/ subfolders contain game pages.</span>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // Dictionary for translations
+        const translations = {
+            en: {
+                title_main: "3D Chess & Go",
+                subtitle: "experimental 3D board games • basic Three.js implementation",
+                header_desc: "Two classic games visualized in 3D space. Camera can be rotated/zoomed, pieces are simple cubes, and the logic covers standard rules (with some limitations). Network play works if you have a WebSocket server.",
+                chess_title: "Chess",
+                chess_desc: "Standard chess rules, 3D board (6x6x8 layout). Move highlighting, check detection, undo, save/load. No AI – human vs human or network.",
+                chess_feat1: "✓ 3D camera (rotate/zoom)",
+                chess_feat2: "✓ Network rooms (with chat)",
+                chess_feat3: "✓ Custom colors / board appearance",
+                chess_feat4: "✓ Undo & move history",
+                chess_badge: "local or online",
+                chess_play: "▶ Play Chess",
+                go_title: "Go",
+                go_desc: "Go rules on a 3D grid (adjustable size, default 6x6x8). Territory scoring, komi, pass/resign, capture detection, and network multiplayer.",
+                go_feat1: "✓ Adjustable board dimensions (X,Y,Z)",
+                go_feat2: "✓ Stone capture & Ko rule (basic)",
+                go_feat3: "✓ Network play & chat",
+                go_feat4: "✓ Save/load game state",
+                go_badge: "3D board, variable size",
+                go_play: "▶ Play Go",
+                feat1_title: "🎮 3D controls",
+                feat1_desc: "Right‑click drag to rotate, scroll to zoom. Axis‑zoom mode available.",
+                feat2_title: "🌐 Network",
+                feat2_desc: "Connect to a WebSocket server, create/join rooms, play online.",
+                feat3_title: "🎨 Visuals",
+                feat3_desc: "Change board colors, piece colors, background. Simple but adjustable.",
+                feat4_title: "💾 Persistence",
+                feat4_desc: "Export/import games, undo moves, view move history.",
+                footer_text: "Built with Three.js • Graphics are basic (cubes + lighting) • Physics = none, just game logic.\nNot a commercial product – a hobby project to explore 3D board game mechanics.",
+                footer_path: "Files are organized: /chess/ and /go/ subfolders contain game pages."
+            },
+            ru: {
+                title_main: "3D Шахматы и Го",
+                subtitle: "экспериментальные 3D настольные игры • базовая реализация Three.js",
+                header_desc: "Две классические игры в 3D. Камерой можно вращать/приближать, фигуры — простые кубы. Логика покрывает основные правила (с некоторыми ограничениями). Сетевая игра работает при наличии WebSocket-сервера.",
+                chess_title: "Шахматы",
+                chess_desc: "Стандартные правила шахмат, 3D доска (6x6x8). Подсветка ходов, определение шаха, отмена хода, сохранение/загрузка. Нет ИИ — игра между людьми или по сети.",
+                chess_feat1: "✓ 3D камера (вращение/приближение)",
+                chess_feat2: "✓ Сетевые комнаты (с чатом)",
+                chess_feat3: "✓ Настройка цветов доски и фигур",
+                chess_feat4: "✓ Отмена хода и история",
+                chess_badge: "локально или онлайн",
+                chess_play: "▶ Играть в шахматы",
+                go_title: "Го",
+                go_desc: "Правила Го на 3D сетке (размер регулируется, по умолчанию 6x6x8). Территориальный подсчёт, коми, пас/сдача, захват камней и сетевая игра.",
+                go_feat1: "✓ Изменяемый размер доски (X,Y,Z)",
+                go_feat2: "✓ Захват камней и правило ко (базовое)",
+                go_feat3: "✓ Сетевая игра и чат",
+                go_feat4: "✓ Сохранение/загрузка партии",
+                go_badge: "3D доска, изменяемый размер",
+                go_play: "▶ Играть в Го",
+                feat1_title: "🎮 3D управление",
+                feat1_desc: "ПКМ + перетаскивание — вращение, колесо — масштаб. Доступен режим увеличения по осям.",
+                feat2_title: "🌐 Сеть",
+                feat2_desc: "Подключение к WebSocket-серверу, создание/вход в комнаты, игра онлайн.",
+                feat3_title: "🎨 Визуал",
+                feat3_desc: "Смена цветов доски, фигур, фона. Просто, но настраиваемо.",
+                feat4_title: "💾 Сохранение",
+                feat4_desc: "Экспорт/импорт партий, отмена ходов, история ходов.",
+                footer_text: "Сделано на Three.js • Графика простая (кубы + освещение) • Физики нет, только игровая логика.\nНе коммерческий продукт — хобби-проект для изучения 3D настольных игр.",
+                footer_path: "Файлы находятся в папках /chess/ и /go/."
+            }
+        };
+
+        let currentLang = 'en';
+
+        function setLanguage(lang) {
+            if (!translations[lang]) return;
+            currentLang = lang;
+            const t = translations[lang];
+
+            document.getElementById('title-main').innerText = t.title_main;
+            document.getElementById('subtitle').innerText = t.subtitle;
+            document.getElementById('header-desc').innerText = t.header_desc;
+
+            document.getElementById('chess-title').innerText = t.chess_title;
+            document.getElementById('chess-desc').innerText = t.chess_desc;
+            document.getElementById('chess-feat1').innerText = t.chess_feat1;
+            document.getElementById('chess-feat2').innerText = t.chess_feat2;
+            document.getElementById('chess-feat3').innerText = t.chess_feat3;
+            document.getElementById('chess-feat4').innerText = t.chess_feat4;
+            document.getElementById('chess-badge').innerText = t.chess_badge;
+            document.getElementById('chess-play').innerText = t.chess_play;
+
+            document.getElementById('go-title').innerText = t.go_title;
+            document.getElementById('go-desc').innerText = t.go_desc;
+            document.getElementById('go-feat1').innerText = t.go_feat1;
+            document.getElementById('go-feat2').innerText = t.go_feat2;
+            document.getElementById('go-feat3').innerText = t.go_feat3;
+            document.getElementById('go-feat4').innerText = t.go_feat4;
+            document.getElementById('go-badge').innerText = t.go_badge;
+            document.getElementById('go-play').innerText = t.go_play;
+
+            document.getElementById('feat1-title').innerText = t.feat1_title;
+            document.getElementById('feat1-desc').innerText = t.feat1_desc;
+            document.getElementById('feat2-title').innerText = t.feat2_title;
+            document.getElementById('feat2-desc').innerText = t.feat2_desc;
+            document.getElementById('feat3-title').innerText = t.feat3_title;
+            document.getElementById('feat3-desc').innerText = t.feat3_desc;
+            document.getElementById('feat4-title').innerText = t.feat4_title;
+            document.getElementById('feat4-desc').innerText = t.feat4_desc;
+
+            document.getElementById('footer-text').innerHTML = t.footer_text.replace(/\n/g, '<br>');
+            document.getElementById('footer-path').innerText = t.footer_path;
+
+            // update active button style
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                if (btn.dataset.lang === lang) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        function detectLanguage() {
+            const browserLang = navigator.language || navigator.userLanguage;
+            if (browserLang.startsWith('ru')) {
+                return 'ru';
+            }
+            return 'en';
+        }
+
+        // set up event listeners
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                setLanguage(btn.dataset.lang);
+                localStorage.setItem('preferredLang', btn.dataset.lang);
+            });
+        });
+
+        // load saved language or detect
+        const savedLang = localStorage.getItem('preferredLang');
+        if (savedLang && translations[savedLang]) {
+            setLanguage(savedLang);
+        } else {
+            setLanguage(detectLanguage());
+        }
+    </script>
+</body>
+</html>

@@ -125,3 +125,14 @@ document.getElementById('toggle-panels').addEventListener('click', () => {
     left.classList.toggle('hidden');
     right.classList.toggle('hidden');
 });
+
+document.getElementById('select-chess').addEventListener('click', () => {
+    window.chessGame.gameType = 'chess';
+    window.chessGame.resetGame();
+    // визуально подсветить активную кнопку
+});
+
+document.getElementById('select-go').addEventListener('click', () => {
+    window.chessGame.gameType = 'go';
+    window.chessGame.resetGame();
+});

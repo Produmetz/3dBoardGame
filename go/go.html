@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="game-type" content="go">
     <title>3D Кубики с Three.js</title>
     <style>
         body {
@@ -423,6 +424,9 @@
     <button id="toggle-panels" class="game-btn">☰</button>
     <!-- Левая панель с подсказками и историей ходов -->
     <div id="left-panel">
+        <div class="buttons-row">
+            <a href="../chess/chess.html" class="game-btn">Играть в шахматы</a>
+        </div>
         <!-- Секция подсказок (по умолчанию свёрнута) -->
         <div class="panel-section collapsed">
             <h3>Подсказки</h3>
@@ -514,9 +518,12 @@
         <div id="game-info" class="panel-section">
             <h3>Текущая игра</h3>
             <div class="panel-content">
-                Текущий игрок: <span id="current-player">Белые</span>
+                Текущий игрок: <span id="current-player">Чёрные</span>
+                <div>Захвачено чёрных: <span id="captured-black">0</span></div>
+                <div>Захвачено белых: <span id="captured-white">0</span></div>
+                <div id="score-display" style="margin-top:5px;"></div>
                 <div id="game-status" style="color: #ff5722; margin-top: 10px;"></div>
-            </div>
+            </div>x
         </div>
 
         <!-- Сетевая игра -->
@@ -606,6 +613,17 @@
                     <button id="load-settings" class="game-btn">Загрузить настройки</button>
                     <input type="file" id="settings-file-input" accept=".json" style="display: none;">
                 </div>
+                <div class="sub-section">
+                    <h4>Размер поля для Го</h4>
+                    <div class="sub-content">
+                        <label>X: <input type="number" id="go-size-x" value="4" min="3" max="10"></label>
+                        <label>Y: <input type="number" id="go-size-y" value="4" min="3" max="10"></label>
+                        <label>Z: <input type="number" id="go-size-z" value="4" min="3" max="10"></label>
+                        <label>Коми: <input type="number" id="go-komi" value="6.5" step="0.5" min="0" max="100"></label>
+                        <button id="apply-go-size">Применить</button>
+                    </div>
+                </div>
+
                 <h4>Увеличить промежутки вдоль оси</h4>
                 <div class="buttons-row">
                     <button id="axis-x" class="axis-btn">Ось X</button>
@@ -655,6 +673,8 @@
                     <button id="new-game" class="game-btn">Новая игра</button>
                     <button id="undo-move" class="game-btn">Отменить ход</button>
                     <button id="position-editor" class="game-btn">Редактор позиций</button>
+                    <button id="pass-btn" class="game-btn">Пас</button>
+                    <button id="resign-btn" class="game-btn">Сдаться</button>
                 </div>
             </div>
         </div>
@@ -668,11 +688,11 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
 
     <!-- Подключаем ваш скрипт -->
-    <script src="chess-engine.js"></script>
-    <script src="graphics.js"></script>
-    <script src="network.js"></script>
-    <script src="game.js"></script>
-    <script src="event-handlers.js"></script>
+    <script src="go-engine_v2.js"></script>
+    <script src="graphics-go.js"></script>
+    <script src="../network.js"></script>
+    <script src="game-go.js"></script>
+    <script src="event-handlers-go.js"></script>
 
     <!-- Скрипт для работы с панелями управления -->
     <script>

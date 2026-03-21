@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="game-type" content="chess">
+    <title>3D Кубики с Three.js</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #0a192f, #0d1b2a);
+            color: #fff;
+        }
+
+        canvas {
+            display: block;
+            pointer-events: auto;
+        }
+
+        .highlight {
+            color: #4cc9f0;
+            font-weight: bold;
+        }
+
+        .axis-btn {
+            background: #4cc9f0;
+            border: none;
+            color: #0a192f;
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .axis-btn:hover {
+            background: #7bdff9;
+            transform: scale(1.05);
+        }
+
+        .axis-btn.active {
+            background: #ff5722;
+            color: white;
+        }
+
+        .game-btn {
+            background: #f05454;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .game-btn:hover {
+            background: #ff7b54;
+            transform: scale(1.05);
+        }
+
+        /* Стили для левой панели */
+        #left-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 300px;
+            padding-left: 10px;
+        }
+
+        /* Стили для правой панели */
+        #right-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding-right: 10px;
+        }
+
+        /* Стиль для скроллбара left-панели */
+        #left-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #left-panel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        #left-panel::-webkit-scrollbar-thumb {
+            background: #4cc9f0;
+            border-radius: 4px;
+        }
+
+        #left-panel::-webkit-scrollbar-thumb:hover {
+            background: #7bdff9;
+        }
+
+        /* Стиль для скроллбара right-панели */
+        #right-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #right-panel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        #right-panel::-webkit-scrollbar-thumb {
+            background: #4cc9f0;
+            border-radius: 4px;
+        }
+
+        #right-panel::-webkit-scrollbar-thumb:hover {
+            background: #7bdff9;
+        }
+
+        .panel-section {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 100, 200, 0.5);
+        }
+
+        .panel-section h3 {
+            margin-top: 0;
+            color: #4cc9f0;
+            text-shadow: 0 0 5px #4cc9f0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-section h3::after {
+            content: "▼";
+            font-size: 12px;
+            transition: transform 0.3s;
+        }
+
+        .panel-section.collapsed h3::after {
+            transform: rotate(-90deg);
+        }
+
+        .panel-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            max-height: 1000px;
+        }
+
+        .panel-section.collapsed .panel-content {
+            max-height: 0;
+        }
+
+        #game-info {
+            font-size: 16px;
+            text-align: center;
+        }
+
+        /* Стили для отображения статуса игры */
+        #game-status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .status-check {
+            background-color: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+            border: 1px solid #ff9800;
+        }
+
+        .status-checkmate {
+            background-color: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            border: 1px solid #f44336;
+            animation: pulse 1.5s infinite;
+        }
+
+        #move-history {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .move-entry {
+            margin: 5px 0;
+            padding: 3px;
+            border-bottom: 1px solid #4cc9f0;
+            font-family: monospace;
+        }
+
+        .buttons-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* Стили для выбора цветов */
+        .color-picker-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .color-input-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-input-container label {
+            min-width: 80px;
+        }
+
+        .color-input {
+            width: 100%;
+            height: 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* Новые стили для сетевой игры */
+        .network-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #4cc9f0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .network-section.visible {
+            max-height: 1000px;
+        }
+
+        .toggle-network-btn {
+            background: #4cc9f0;
+            border: none;
+            color: #0a192f;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        .toggle-network-btn:hover {
+            background: #7bdff9;
+        }
+
+        .sub-section {
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(76, 201, 240, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .sub-section:last-child {
+            border-bottom: none;
+        }
+
+        .sub-section h4 {
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0 5px 0;
+            color: #7bdff9;
+            text-shadow: 0 0 3px #7bdff9;
+        }
+
+        .sub-section h4::after {
+            content: "▼";
+            font-size: 12px;
+            transition: transform 0.3s;
+        }
+
+        .sub-section.collapsed h4::after {
+            transform: rotate(-90deg);
+        }
+
+        .sub-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            max-height: 1000px;
+        }
+
+        .sub-section.collapsed .sub-content {
+            max-height: 0;
+        }
+
+
+        .hidden {
+            display: none !important;
+        }
+
+
+        /* Мобильная версия */
+        @media screen and (max-width: 768px) {
+
+            /* Канвас фиксируется, чтобы оставаться на месте при прокрутке */
+            canvas {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                z-index: 1;
+                pointer-events: auto;
+                /* доска остаётся интерактивной */
+            }
+
+            /* Панели выстраиваются вертикально, фон прозрачный (фон задаётся секциями) */
+            #left-panel,
+            #right-panel {
+                position: relative;
+                top: auto;
+                left: auto;
+                right: auto;
+                bottom: auto;
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+                box-sizing: border-box;
+                background: transparent;
+                z-index: 2;
+                overflow-y: visible;
+                /* отключаем собственные скроллы */
+                padding-bottom: 10px;
+            }
+
+            body {
+                overflow-y: auto;
+                min-height: 100vh;
+                padding-bottom: 100vh;
+                /* пустое пространство высотой с экран */
+            }
+
+            #left-panel {
+                order: 1;
+            }
+
+            #right-panel {
+                order: 2;
+            }
+
+            #toggle-panels {
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 10;
+                margin: 0;
+                /* остальные стили (ширина, высота, фон и т.д.) остаются как в вашем коде */
+            }
+
+            /* Стили секций: полупрозрачный фон с размытием для лучшей читаемости на фоне доски */
+            .panel-section {
+                background: rgba(10, 25, 47, 0.85);
+                backdrop-filter: blur(5px);
+                margin-bottom: 10px;
+                /* отступ между секциями */
+            }
+
+            /* Адаптация кнопок и полей ввода для удобного нажатия пальцем */
+            .buttons-row {
+                flex-wrap: wrap;
+            }
+
+            .axis-btn,
+            .game-btn {
+                padding: 10px 12px;
+                font-size: 16px;
+                min-width: 80px;
+            }
+
+            .network-input {
+                width: 100%;
+                box-sizing: border-box;
+                margin-bottom: 8px;
+                padding: 10px;
+                font-size: 16px;
+            }
+        }
+
+        /* Скрываем кнопку на десктопе */
+        @media screen and (min-width: 769px) {
+            #toggle-panels {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <button id="toggle-panels" class="game-btn">☰</button>
+    <!-- Левая панель с подсказками и историей ходов -->
+    <div id="left-panel">
+        <div class="buttons-row">
+            <div class="buttons-row">
+                <a href="../go/go.html" class="game-btn">Играть в Го</a>
+            </div>
+        </div>
+        <!-- Секция подсказок (по умолчанию свёрнута) -->
+        <div class="panel-section collapsed">
+            <h3>Подсказки</h3>
+            <div class="panel-content">
+                <!-- Основное управление -->
+                <div class="sub-section collapsed">
+                    <h4>Основное управление</h4>
+                    <div class="sub-content">
+                        <p>• ЛКМ - выбор клетки/фигуры</p>
+                        <p>• Выделите фигуру, затем кликните на целевую клетку для хода</p>
+                        <p>• Возможные ходы подсвечиваются зеленым цветом</p>
+                    </div>
+                </div>
+
+                <div class="sub-section collapsed">
+                    <h4>Обучение по фигурам</h4>
+                    <div class="sub-content">
+                        <p>• Изучите как ходят разные фигуры</p>
+                        <p>• Выберите фигуру из списка и посмотрите ее возможные ходы</p>
+                        <p>• Попрактикуйтесь в перемещении фигур на доске</p>
+                        <button id="open-tutorial" class="game-btn" style="width:100%; margin-top:10px;">
+                            Открыть обучение
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Управление камерой -->
+                <div class="sub-section collapsed">
+                    <h4>Управление камерой</h4>
+                    <div class="sub-content">
+                        <p>• ПКМ + движение мыши - вращение камеры</p>
+                        <p>• Колесо мыши - приближение/отдаление</p>
+                        <p>• Кнопки осей (X/Y/Z) - для выбора оси, вдоль которой будет увеличенное расстояние между
+                            ячейками поля</p>
+                    </div>
+                </div>
+
+                <!-- Управление игрой -->
+                <div class="sub-section collapsed">
+                    <h4>Управление игрой</h4>
+                    <div class="sub-content">
+                        <p>• Сохранить игру - экспорт текущей игры в файл</p>
+                        <p>• Загрузить игру - импорт сохраненной игры</p>
+                        <p>• Отменить ход - возврат на ход назад</p>
+                        <p>• История ходов - просмотр всех сделанных ходов</p>
+                    </div>
+                </div>
+
+                <!-- Настройки внешнего вида -->
+                <div class="sub-section collapsed">
+                    <h4>Настройки внешнего вида</h4>
+                    <div class="sub-content">
+                        <p>• Цвета кубиков - изменение прозрачных клеток поля</p>
+                        <p>• Цвета доски - изменение цветов игрового поля</p>
+                        <p>• Цвета фигур - индивидуальные цвета для белых и черных фигур</p>
+                        <p>• Цвет фона - изменение фона сцены</p>
+                    </div>
+                </div>
+
+
+                <!-- Особенности игры -->
+                <div class="sub-section collapsed">
+                    <h4>Особенности игры</h4>
+                    <div class="sub-content">
+                        <p>• Шахматная доска 6×6×8 с трехмерным расположением фигур</p>
+                        <p>• Автоматическое определение шаха и мата</p>
+                        <p>• Подсветка короля при шахе красным цветом</p>
+                        <p>• Фильтрация невозможных ходов при шахе</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Секция истории ходов -->
+        <div class="panel-section">
+            <h3>История ходов</h3>
+            <div class="panel-content">
+                <div id="move-history">
+                    <div id="history-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Единая правая панель с возможностью прокрутки -->
+    <div id="right-panel">
+
+        <!-- Секция информации о игре -->
+        <div id="game-info" class="panel-section">
+            <h3>Текущая игра</h3>
+            <div class="panel-content">
+                Текущий игрок: <span id="current-player">Белые</span>
+                <div id="game-status" style="color: #ff5722; margin-top: 10px;"></div>
+            </div>
+        </div>
+
+        <!-- Сетевая игра -->
+        <div class="panel-section collapsed">
+            <h3>Сетевая игра</h3>
+            <div class="panel-content">
+                <!-- Режим подключения -->
+                <div id="network-connect">
+                    <input type="text" id="server-address" class="network-input" placeholder="Адрес сервера"
+                        value="ws://localhost:8765">
+                    <input type="text" id="player-name" class="network-input" placeholder="Ваше имя">
+                    <div class="buttons-row">
+                        <button id="connect-btn" class="game-btn">Подключиться</button>
+                    </div>
+                </div>
+
+                <!-- Режим списка комнат (после подключения) -->
+                <div id="network-rooms" style="display: none;">
+                    <h5>Комнаты на сервере</h5>
+                    <div id="rooms-list"
+                        style="max-height: 150px; overflow-y: auto; border: 1px solid #4cc9f0; padding: 5px; margin-bottom: 10px;">
+                    </div>
+                    <div class="buttons-row">
+                        <button id="refresh-rooms-btn" class="game-btn">Обновить список</button>
+                        <button id="create-room-btn" class="game-btn">Создать комнату</button>
+                        <button id="disconnect-from-server-btn" class="game-btn">Отключиться</button>
+                    </div>
+
+                    <!-- Панель создания комнаты -->
+                    <div id="create-room-panel" style="margin-top: 10px; display: none;">
+                        <input type="text" id="new-room-name" class="network-input" placeholder="Название комнаты">
+                        <input type="password" id="new-room-password" class="network-input"
+                            placeholder="Пароль (оставьте пустым)">
+                        <label><input type="checkbox" id="new-room-public" checked> Публичная комната</label>
+                        <div class="buttons-row">
+                            <button id="confirm-create-room-btn" class="game-btn">Создать</button>
+                            <button id="cancel-create-room-btn" class="game-btn">Отмена</button>
+                        </div>
+                    </div>
+
+                    <!-- Панель присоединения к комнате -->
+                    <div id="join-room-panel" style="margin-top: 10px; display: none;">
+                        <p>Подключение к комнате <span id="selected-room-name"></span></p>
+                        <input type="password" id="join-room-password" class="network-input"
+                            placeholder="Пароль (если требуется)">
+                        <div class="buttons-row">
+                            <button id="confirm-join-room-btn" class="game-btn">Присоединиться</button>
+                            <button id="cancel-join-room-btn" class="game-btn">Отмена</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Режим внутри комнаты (старый интерфейс) -->
+                <div id="network-inroom" style="display: none;">
+                    <div>ID комнаты: <span id="room-id-display">-</span></div>
+                    <div>Ваш цвет: <span id="player-color">-</span></div>
+                    <div>Противник: <span id="opponent-name">-</span></div>
+                    <button id="offer-undo" class="game-btn">Предложить отмену хода</button>
+                    <div id="undo-status" style="margin-top: 10px; display: none;">
+                        Ожидание ответа...
+                        <button id="cancel-undo" class="game-btn" style="margin-left: 10px;">Отменить</button>
+                    </div>
+                    <div class="sub-section collapsed" style="margin-top:10px;">
+                        <h4 style="font-size:0.9em;">Чат</h4>
+                        <div class="sub-content">
+                            <div id="chat-messages"
+                                style="height: 100px; overflow-y: auto; border: 1px solid #4cc9f0; padding: 5px;"></div>
+                            <input type="text" id="chat-input" class="network-input" placeholder="Сообщение...">
+                            <button id="send-chat-btn" class="game-btn">Отправить</button>
+                        </div>
+                    </div>
+                    <button id="leave-room-btn" class="game-btn" style="margin-top:10px;">Покинуть комнату</button>
+                </div>
+
+                <!-- Строка статуса сети -->
+                <div id="network-status" style="margin-top: 10px; font-style: italic;">Не подключено</div>
+            </div>
+        </div>
+
+        <!-- Секция настроек -->
+        <div class="panel-section">
+            <h3>Настройки</h3>
+            <div class="panel-content">
+                <h4>Управление настройками</h4>
+                <div class="buttons-row">
+                    <button id="save-settings" class="game-btn">Сохранить настройки</button>
+                    <button id="load-settings" class="game-btn">Загрузить настройки</button>
+                    <input type="file" id="settings-file-input" accept=".json" style="display: none;">
+                </div>
+                <div class="sub-section">
+                    <h4>Размер поля для Го</h4>
+                    <div class="sub-content">
+                        <label>X: <input type="number" id="go-size-x" value="6" min="3" max="10"></label>
+                        <label>Y: <input type="number" id="go-size-y" value="6" min="3" max="10"></label>
+                        <label>Z: <input type="number" id="go-size-z" value="8" min="3" max="10"></label>
+                        <button id="apply-go-size">Применить</button>
+                    </div>
+                </div>
+                <h4>Увеличить промежутки вдоль оси</h4>
+                <div class="buttons-row">
+                    <button id="axis-x" class="axis-btn">Ось X</button>
+                    <button id="axis-y" class="axis-btn">Ось Y</button>
+                    <button id="axis-z" class="axis-btn">Ось Z</button>
+                    <button id="axis-none" class="axis-btn active">Без увеличения</button>
+                </div>
+
+                <div class="sub-section collapsed">
+                    <h4>Цвета</h4>
+                    <div class="sub-content">
+                        <div class="color-picker-container">
+                            <div class="color-input-container">
+                                <label for="bg-color">Фон:</label>
+                                <input type="color" id="bg-color" class="color-input" value="#FFFFFF">
+                            </div>
+                            <div class="color-input-container">
+                                <label for="board-color-1">Доска цвет 1:</label>
+                                <input type="color" id="board-color-1" class="color-input" value="#1E90FF">
+                            </div>
+                            <div class="color-input-container">
+                                <label for="board-color-2">Доска цвет 2:</label>
+                                <input type="color" id="board-color-2" class="color-input" value="#0a192f">
+                            </div>
+                            <div class="color-input-container">
+                                <label for="white-figures-color">Белые фигуры:</label>
+                                <input type="color" id="white-figures-color" class="color-input" value="#FFFFFF">
+                            </div>
+                            <div class="color-input-container">
+                                <label for="black-figures-color">Черные фигуры:</label>
+                                <input type="color" id="black-figures-color" class="color-input" value="#000000">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Секция игры -->
+        <div class="panel-section">
+            <h3>Игра</h3>
+            <div class="panel-content">
+                <h4>Управление игрой</h4>
+                <div class="buttons-row">
+                    <button id="save-game" class="game-btn">Сохранить игру</button>
+                    <button id="load-game" class="game-btn">Загрузить игру</button>
+                    <button id="new-game" class="game-btn">Новая игра</button>
+                    <button id="undo-move" class="game-btn">Отменить ход</button>
+                    <button id="position-editor" class="game-btn">Редактор позиций</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скрытый input для выбора файла -->
+    <input type="file" id="file-input" accept=".txt" style="display: none;">
+
+    <!-- Подключаем Three.js и OrbitControls из CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- Подключаем ваш скрипт -->
+    <script src="chess-engine.js"></script>
+    <script src="go-engine.js"></script>
+    <script src="graphics.js"></script>
+    <script src="../network.js"></script>
+    <script src="game.js"></script>
+    <script src="event-handlers.js"></script>
+
+    <!-- Скрипт для работы с панелями управления -->
+    <script>
+
+    </script>
+</body>
+
+</html>
