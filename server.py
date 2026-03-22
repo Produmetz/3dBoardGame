@@ -5,6 +5,7 @@ import websockets
 import os
 import signal
 import logging
+import http
 from typing import Dict, Optional
 
 # Настройка логирования (опционально)
@@ -20,16 +21,11 @@ rooms = {}                  # room_id -> Room
 
 def health_check(connection, request):
     """Обрабатывает HTTP-запросы (health check, HEAD и т.д.)"""
-    # Render health check
-    if request.path == "/healthz":
-        return connection.respond(http.HTTPStatus.OK, "OK\n")
-    # Если это не WebSocket upgrade — возвращаем ошибку
+    # Если это не запрос на WebSocket upgrade — возвращаем 200 OK
     if request.headers.get("Upgrade") is None:
-        return connection.respond(
-            http.HTTPStatus.BAD_REQUEST,
-            "WebSocket upgrade required\n"
-        )
-    return None  # продолжить WebSocket handshake
+        return connection.respond(http.HTTPStatus.OK, "OK\n")
+    # Иначе продолжаем WebSocket handshake
+    return None
 
 
 class Player:
