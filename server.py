@@ -2,12 +2,35 @@ import asyncio
 import json
 import uuid
 import websockets
+import os
+import signal
+import logging
 from typing import Dict, Optional
+
+# Настройка логирования (опционально)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logging.getLogger("websockets.server").setLevel(logging.CRITICAL)  # подавляем ошибки HEAD-запросов
 
 # Хранилище подключённых клиентов и игроков
 connected = {}              # websocket -> player info
 players_by_name = {}        # name -> Player
 rooms = {}                  # room_id -> Room
+
+
+def health_check(connection, request):
+    """Обрабатывает HTTP-запросы (health check, HEAD и т.д.)"""
+    # Render health check
+    if request.path == "/healthz":
+        return connection.respond(http.HTTPStatus.OK, "OK\n")
+    # Если это не WebSocket upgrade — возвращаем ошибку
+    if request.headers.get("Upgrade") is None:
+        return connection.respond(
+            http.HTTPStatus.BAD_REQUEST,
+            "WebSocket upgrade required\n"
+        )
+    return None  # продолжить WebSocket handshake
+
 
 class Player:
     def __init__(self, name: str):
@@ -374,9 +397,24 @@ async def handler(websocket):
                         asyncio.create_task(delete_room_after_delay(room.id))
 
 async def main():
-    async with websockets.serve(handler, "localhost", 8765):
-        print("Сервер запущен на ws://localhost:8765")
-        await asyncio.Future()
+    # Настраиваем завершение по SIGTERM
+    loop = asyncio.get_running_loop()
+    stop = loop.create_future()
+    loop.add_signal_handler(signal.SIGTERM, stop.set_result, None)
+
+    # Получаем порт из переменной окружения (Render задаёт PORT)
+    port = int(os.environ.get("PORT", 10000))
+
+    # Запускаем сервер на всех интерфейсах
+    async with websockets.serve(
+        handler,
+        host="0.0.0.0",                 # слушаем все интерфейсы
+        port=port,
+        process_request=health_check,   # обрабатываем HTTP-запросы
+    ):
+        logger.info(f"Сервер запущен на ws://0.0.0.0:{port}")
+        await stop
+        logger.info("Завершаем работу...")
 
 if __name__ == "__main__":
     asyncio.run(main())
