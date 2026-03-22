@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'load-game': () => document.getElementById('file-input').click(),
         'new-game': () => window.goGame?.resetGame(),
         'pass-btn': () => window.goGame?.pass(),
+        'undo-move': () => window.goGame?.undoMove(),
         'resign-btn': () => window.goGame?.resign(),
         'apply-go-size': () => window.goGame?.resetGame(),
         'connect-btn': () => window.goGame?.connectToServer(),
@@ -41,6 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'cancel-join-room-btn': () => window.goGame?.cancelJoinRoom(),
         'disconnect-from-server-btn': () => window.goGame?.disconnect(),
         'leave-room-btn': () => window.goGame?.leaveRoom(),
+        'cancel-undo': () => window.goGame?.cancelUndoRequest(),
         'offer-undo': () => window.goGame?.offerUndo(),
         'send-chat-btn': () => window.goGame?.sendChatMessage()
     };

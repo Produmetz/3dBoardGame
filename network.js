@@ -52,20 +52,24 @@ class NetworkManager {
                 break;
             case 'room_created':
                 this.roomId = data.roomId;
-                this.playerColor = 'White';
+                this.playerColor = data.color;   // 'Black' или 'White'
                 this.game.updateRoomId(data.roomId);
-                this.game.updatePlayerColor('White');
+                this.game.updatePlayerColor(data.color);
                 this.game.updateOpponentName(null);
+                this.game.setBoardParams(data.boardX, data.boardY, data.boardZ, data.komi);
+                this.game.setMyTurn(data.color === 'Black');
                 this.game.switchToInRoom();
                 break;
+
             case 'joined_room':
                 this.roomId = data.roomId;
-                this.playerColor = data.color;
+                this.playerColor = data.color;   // 'White' для Го
                 this.opponentName = data.opponentName;
                 this.game.updateRoomId(data.roomId);
                 this.game.updatePlayerColor(data.color);
                 this.game.updateOpponentName(data.opponentName);
-                this.game.setMyTurn(data.color === 'White');
+                this.game.setBoardParams(data.boardX, data.boardY, data.boardZ, data.komi);
+                this.game.setMyTurn(data.color === 'White');   // для Го белые ходят вторыми
                 this.game.switchToInRoom();
                 break;
             case 'opponent_joined':
@@ -88,6 +92,12 @@ class NetworkManager {
             case 'undo_response':
                 this.game.handleUndoResponse(data.accepted);
                 break;
+            case 'pass':
+                this.game.handleNetworkPass();
+                break;
+            case 'resign':
+                this.game.handleNetworkResign();
+                break;
             case 'error':
                 alert(data.message);
                 break;
@@ -104,12 +114,17 @@ class NetworkManager {
         this.send({ type: 'list_rooms' });
     }
 
-    createRoom(roomName, password, isPublic) {
+    createRoom(roomName, password, isPublic, boardX, boardY, boardZ, komi) {
         this.send({
             type: 'create_room',
             roomName: roomName,
             password: password || null,
-            isPublic: isPublic
+            isPublic: isPublic,
+            gameType: 'go',
+            boardX: boardX,
+            boardY: boardY,
+            boardZ: boardZ,
+            komi: komi
         });
     }
 
@@ -143,6 +158,13 @@ class NetworkManager {
 
     sendUndoResponse(accepted) {
         this.send({ type: 'undo_response', accepted: accepted });
+    }
+    sendPass() {
+        this.send({ type: 'pass' });
+    }
+
+    sendResign() {
+        this.send({ type: 'resign' });
     }
 
     disconnect() {

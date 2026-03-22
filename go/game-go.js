@@ -158,9 +158,27 @@ class GoGame {
         }
     }
 
+    undoMove() {
+        if (this.isNetworkGame) {
+            alert('В сетевой игре используйте кнопку "Предложить отмену"');
+            return;
+        }
+        if (this.board.undo()) {
+            GraphicsEngine.createAndFillBoardForGo(this.board);
+            this.updateUI();
+            GraphicsEngine.unselectCell();
+        } else {
+            alert('Невозможно отменить ход');
+        }
+    }
+
     pass() {
         if (!this.isMyTurn) return;
         const currentPlayer = this.board.getCurrentPlayer();
+        if (this.isNetworkGame && !this.isNetworkMove) {
+            this.setMyTurn(false);
+            this.networkManager.sendPass();
+        }
         const success = this.board.pass();
         if (success) {
             this.moveHistory.push({ type: 'pass', color: currentPlayer === GoEngine.Stone.BLACK ? 'Black' : 'White' });
@@ -182,9 +200,13 @@ class GoGame {
     resign() {
         if (!this.isMyTurn) return;
         const currentPlayer = this.board.getCurrentPlayer();
+        if (this.isNetworkGame && !this.isNetworkMove) {
+            this.networkManager.sendResign();
+        }
         const success = this.board.resign();
         if (success) {
             const winner = currentPlayer === GoEngine.Stone.BLACK ? 'Белые' : 'Чёрные';
+
             alert(`Игра окончена. Победитель: ${winner} (сдача)`);
             if (this.isNetworkGame && !this.isNetworkMove) {
                 this.networkManager.sendResign();
@@ -272,12 +294,26 @@ class GoGame {
         this.networkManager.requestRoomList();
     }
 
+    setBoardParams(x, y, z, komi) {
+        const wasNetworkGame = this.isNetworkGame;
+        document.getElementById('go-size-x').value = x;
+        document.getElementById('go-size-y').value = y;
+        document.getElementById('go-size-z').value = z;
+        document.getElementById('go-komi').value = komi;
+        this.resetGame();
+        this.isNetworkGame = wasNetworkGame;
+    }
+
     confirmCreateRoom() {
         const name = document.getElementById('new-room-name').value.trim();
         if (!name) return alert('Введите название комнаты');
         const pwd = document.getElementById('new-room-password').value;
         const isPublic = document.getElementById('new-room-public').checked;
-        this.networkManager.createRoom(name, pwd || null, isPublic);
+        const boardX = parseInt(document.getElementById('go-size-x').value);
+        const boardY = parseInt(document.getElementById('go-size-y').value);
+        const boardZ = parseInt(document.getElementById('go-size-z').value);
+        const komi = parseFloat(document.getElementById('go-komi').value);
+        this.networkManager.createRoom(name, pwd || null, isPublic, boardX, boardY, boardZ, komi);
     }
 
     cancelCreateRoom() {
@@ -372,7 +408,13 @@ class GoGame {
     }
 
     processUndo() {
-        alert('Отмена хода в Го пока не поддерживается');
+        if (this.board.undo()) {
+            GraphicsEngine.createAndFillBoardForGo(this.board);
+            this.updateUI();
+            GraphicsEngine.unselectCell();
+        } else {
+            alert('Невозможно отменить ход');
+        }
     }
 
     cancelUndoRequest() {
@@ -505,11 +547,79 @@ class GoGame {
     }
 
     saveGame() {
-        alert('Сохранение игры в Го пока не поддерживается');
+        const saveData = {
+            version: 1,
+            gameType: 'go',
+            dims: this.board.dims,
+            komi: this.board.komi,
+            grid: this.board.grid.slice(),
+            currentPlayer: this.board.currentPlayer,
+            captures: this.board.captures,
+            passCount: this.board.passCount,
+            gameOver: this.board.gameOver,
+            resigned: this.board.resigned,
+            moveHistory: this.moveHistory
+        };
+        const json = JSON.stringify(saveData);
+        const blob = new Blob([json], { type: 'text/plain' });
+        const a = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        a.href = url;
+        a.download = 'go_game_save.txt';
+        a.click();
+        URL.revokeObjectURL(url);
     }
 
     loadGame(file) {
-        alert('Загрузка игры в Го пока не поддерживается');
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+
+                // Проверяем, что это сохранение игры Го
+                if (data.gameType !== 'go') {
+                    alert('Это не сохранение игры Го');
+                    return;
+                }
+
+                // Создаём новую доску с теми же размерами и коми
+                this.board = new GoEngine.Board(data.dims, data.komi);
+
+                // Восстанавливаем состояние доски
+                this.board.grid = data.grid.slice();
+                this.board.currentPlayer = data.currentPlayer;
+                this.board.captures = data.captures;
+                this.board.passCount = data.passCount;
+                this.board.gameOver = data.gameOver;
+                this.board.resigned = data.resigned;
+
+                // Пересчитываем хэш доски (необходимо для правильной работы ко)
+                this.board.hash = this.board.computeHash();
+
+                // Восстанавливаем историю ходов (для отображения)
+                this.moveHistory = data.moveHistory;
+
+                // Сбрасываем сетевой режим (загруженная игра – локальная)
+                this.isNetworkGame = false;
+                this.setMyTurn(true);
+
+                // Обновляем отображение доски и UI
+                GraphicsEngine.createAndFillBoardForGo(this.board);
+                this.updateUI();
+                this.checkGameState();
+
+                // Сообщаем о результате загрузки
+                if (this.board.gameOver) {
+                    const score = this.board.computeScore();
+                    alert(`Игра загружена. Счёт: чёрные ${score.black}, белые ${score.white}`);
+                } else {
+                    alert('Игра успешно загружена');
+                }
+            } catch (err) {
+                alert('Ошибка при загрузке: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
     }
 }
 
@@ -517,28 +627,3 @@ window.addEventListener('load', () => {
     window.goGame = new GoGame();
 });
 
-// Обработчики для кнопок управления
-document.getElementById('white-figures-color').addEventListener('input', (e) => {
-    if (window.goGame) window.goGame.changeColor('whiteFigure', e.target.value);
-});
-
-document.getElementById('black-figures-color').addEventListener('input', (e) => {
-    if (window.goGame) window.goGame.changeColor('blackFigure', e.target.value);
-});
-
-// При изменении размеров доски через UI
-document.getElementById('apply-go-size').addEventListener('click', () => {
-    if (window.goGame) window.goGame.resetGame();
-});
-
-// Обработчики кнопок
-document.getElementById('new-game').addEventListener('click', () => {
-    if (window.goGame) window.goGame.resetGame();
-});
-/*document.getElementById('pass-btn').addEventListener('click', () => {
-    if (window.goGame) window.goGame.pass();
-});*/
-document.getElementById('resign-btn').addEventListener('click', () => {
-    if (window.goGame) window.goGame.resign();
-});
-// Остальные кнопки (сохранить/загрузить) можно добавить аналогично

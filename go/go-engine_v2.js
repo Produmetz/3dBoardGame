@@ -26,6 +26,8 @@ class Board {
         this.currentPlayer = Stone.BLACK;
         this.captures = { [Stone.BLACK]: 0, [Stone.WHITE]: 0 };
         this.moveHistory = [];                    // хранит хэши Цобриста после каждого хода
+        this.stateHistory = [];
+        this.saveState(); // сохраняем начальное состояние
         this.passCount = 0;
         this.gameOver = false;
         this.resigned = false;
@@ -293,6 +295,7 @@ class Board {
         this.moveHistory.push(this.hash);
         this.passCount = 0;
         this.currentPlayer = opponent;
+        this.saveState();
         return true;
     }
 
@@ -307,6 +310,7 @@ class Board {
             this.gameOver = true;
         }
         this.currentPlayer = this.currentPlayer === Stone.BLACK ? Stone.WHITE : Stone.BLACK;
+        this.saveState();
         return true;
     }
 
@@ -318,6 +322,38 @@ class Board {
         if (this.gameOver) return false;
         this.gameOver = true;
         this.resigned = true;
+        this.saveState();
+        return true;
+    }
+
+    // Метод сохранения состояния
+    saveState() {
+        const state = {
+            grid: [...this.grid],
+            captures: { ...this.captures },
+            currentPlayer: this.currentPlayer,
+            passCount: this.passCount,
+            gameOver: this.gameOver,
+            resigned: this.resigned,
+            moveHistory: [...this.moveHistory],
+            hash: this.hash
+        };
+        this.stateHistory.push(state);
+    }
+    // Метод отмены последнего хода
+    undo() {
+        if (this.stateHistory.length <= 1) return false; // нет предыдущего состояния
+        this.stateHistory.pop(); // удаляем текущее состояние
+        const prevState = this.stateHistory[this.stateHistory.length - 1];
+        // Восстанавливаем
+        this.grid = [...prevState.grid];
+        this.captures = { ...prevState.captures };
+        this.currentPlayer = prevState.currentPlayer;
+        this.passCount = prevState.passCount;
+        this.gameOver = prevState.gameOver;
+        this.resigned = prevState.resigned;
+        this.moveHistory = [...prevState.moveHistory];
+        this.hash = prevState.hash;
         return true;
     }
 
