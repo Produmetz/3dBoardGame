@@ -334,7 +334,7 @@ async def handler(websocket):
                         'type': 'chat',
                         'sender': player.name,
                         'message': data.get('message')
-                    })
+                    }, exclude=player.ws)  # ← добавляем исключение отправителя
 
             elif msg_type == 'undo_request':
                 if not player.room_id:

@@ -441,17 +441,6 @@
                     </div>
                 </div>
 
-                <div class="sub-section collapsed">
-                    <h4>Обучение по фигурам</h4>
-                    <div class="sub-content">
-                        <p>• Изучите как ходят разные фигуры</p>
-                        <p>• Выберите фигуру из списка и посмотрите ее возможные ходы</p>
-                        <p>• Попрактикуйтесь в перемещении фигур на доске</p>
-                        <button id="open-tutorial" class="game-btn" style="width:100%; margin-top:10px;">
-                            Открыть обучение
-                        </button>
-                    </div>
-                </div>
 
                 <!-- Управление камерой -->
                 <div class="sub-section collapsed">
@@ -483,18 +472,6 @@
                         <p>• Цвета доски - изменение цветов игрового поля</p>
                         <p>• Цвета фигур - индивидуальные цвета для белых и черных фигур</p>
                         <p>• Цвет фона - изменение фона сцены</p>
-                    </div>
-                </div>
-
-
-                <!-- Особенности игры -->
-                <div class="sub-section collapsed">
-                    <h4>Особенности игры</h4>
-                    <div class="sub-content">
-                        <p>• Шахматная доска 6×6×8 с трехмерным расположением фигур</p>
-                        <p>• Автоматическое определение шаха и мата</p>
-                        <p>• Подсветка короля при шахе красным цветом</p>
-                        <p>• Фильтрация невозможных ходов при шахе</p>
                     </div>
                 </div>
             </div>
@@ -582,6 +559,8 @@
                     <div>Ваш цвет: <span id="player-color">-</span></div>
                     <div>Противник: <span id="opponent-name">-</span></div>
                     <button id="offer-undo" class="game-btn">Предложить отмену хода</button>
+                    <button id="pass-btn" class="game-btn">Пас</button>
+                    <button id="resign-btn" class="game-btn">Сдаться</button>
                     <div id="undo-status" style="margin-top: 10px; display: none;">
                         Ожидание ответа...
                         <button id="cancel-undo" class="game-btn" style="margin-left: 10px;">Отменить</button>
