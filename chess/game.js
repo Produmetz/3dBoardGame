@@ -27,7 +27,7 @@ class Game {
 
         // Добавляем обработчики событий
         this.setupEventListeners();
-        
+
         // Запускаем анимацию
         animate();
 
@@ -514,7 +514,7 @@ class Game {
         if (!name) return alert('Введите название комнаты');
         const pwd = document.getElementById('new-room-password').value;
         const isPublic = document.getElementById('new-room-public').checked;
-        this.networkManager.createRoom(name, pwd || null, isPublic);
+        this.networkManager.createRoom(name, pwd || null, isPublic, 'chess'); // gameType = 'chess'
     }
 
     cancelCreateRoom() {
@@ -559,6 +559,8 @@ class Game {
 
     updatePlayerColor(color) {
         document.getElementById('player-color').textContent = color;
+        // Синхронизируем текущего игрока с полученным цветом
+        this.currentPlayer = color;
     }
 
     updateOpponentName(name) {

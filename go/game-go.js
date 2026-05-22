@@ -160,15 +160,15 @@ class GoGame {
 
     undoMove() {
         if (this.isNetworkGame) {
-            alert('В сетевой игре используйте кнопку "Предложить отмену"');
-            return;
-        }
-        if (this.board.undo()) {
-            GraphicsEngine.createAndFillBoardForGo(this.board);
-            this.updateUI();
-            GraphicsEngine.unselectCell();
+            this.offerUndo(); // отправляем предложение об отмене
         } else {
-            alert('Невозможно отменить ход');
+            if (this.board.undo()) {
+                GraphicsEngine.createAndFillBoardForGo(this.board);
+                this.updateUI();
+                GraphicsEngine.unselectCell();
+            } else {
+                alert('Невозможно отменить ход');
+            }
         }
     }
 
@@ -313,7 +313,7 @@ class GoGame {
         const boardY = parseInt(document.getElementById('go-size-y').value);
         const boardZ = parseInt(document.getElementById('go-size-z').value);
         const komi = parseFloat(document.getElementById('go-komi').value);
-        this.networkManager.createRoom(name, pwd || null, isPublic, boardX, boardY, boardZ, komi);
+        this.networkManager.createRoom(name, pwd || null, isPublic, 'go', boardX, boardY, boardZ, komi);
     }
 
     cancelCreateRoom() {
@@ -335,7 +335,11 @@ class GoGame {
     }
 
     offerUndo() {
+        if (!this.isNetworkGame) return;
         this.networkManager.sendUndoRequest();
+        // Показываем индикатор ожидания
+        document.getElementById('undo-status').style.display = 'block';
+        this.pendingUndoRequest = true;
     }
 
     sendChatMessage() {
@@ -381,12 +385,26 @@ class GoGame {
         this.isNetworkMove = true;
         this.pass();
         this.isNetworkMove = false;
-        this.setMyTurn(true);
+        if (!this.board.isGameOver()) {
+            this.setMyTurn(true);
+        }
     }
 
     handleNetworkResign() {
         alert('Противник сдался. Вы победили!');
+        this.board.gameOver = true;
+        this.board.resigned = true;
+        this.setMyTurn(false);
         this.updateUI();
+    }
+
+    // Новый метод для обработки нажатия на кнопку "Отменить ход"
+    handleUndoClick() {
+        if (this.isNetworkGame) {
+            this.offerUndo();
+        } else {
+            this.undoMove();
+        }
     }
 
     handleUndoRequest() {
@@ -397,9 +415,13 @@ class GoGame {
             this.processUndo();
         }
         this.pendingUndoRequest = null;
+        // Скрываем индикатор, если он был показан (на случай, если мы сами запрашивали)
+        document.getElementById('undo-status').style.display = 'none';
     }
 
     handleUndoResponse(accepted) {
+        document.getElementById('undo-status').style.display = 'none';
+        this.pendingUndoRequest = false;
         if (accepted) {
             this.processUndo();
         } else {
@@ -409,7 +431,13 @@ class GoGame {
 
     processUndo() {
         if (this.board.undo()) {
+            // Удаляем последний ход из локальной истории
+            this.moveHistory.pop();
             GraphicsEngine.createAndFillBoardForGo(this.board);
+            // Обновляем очередь ходов: после отмены ход переходит к тому, кто его делал
+            const currentStone = this.board.getCurrentPlayer();
+            const myStone = (this.playerColor === 'Black') ? GoEngine.Stone.BLACK : GoEngine.Stone.WHITE;
+            this.setMyTurn(currentStone === myStone);
             this.updateUI();
             GraphicsEngine.unselectCell();
         } else {
@@ -420,7 +448,7 @@ class GoGame {
     cancelUndoRequest() {
         if (this.pendingUndoRequest) {
             this.networkManager.sendUndoResponse(false);
-            this.pendingUndoRequest = null;
+            this.pendingUndoRequest = false;
             document.getElementById('undo-status').style.display = 'none';
         }
     }

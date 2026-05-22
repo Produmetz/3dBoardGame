@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'load-game': () => document.getElementById('file-input').click(),
         'new-game': () => window.goGame?.resetGame(),
         'pass-btn': () => window.goGame?.pass(),
-        'undo-move': () => window.goGame?.undoMove(),
+        'undo-move': () => window.goGame?.handleUndoClick(),
         'resign-btn': () => window.goGame?.resign(),
         'apply-go-size': () => window.goGame?.resetGame(),
         'connect-btn': () => window.goGame?.connectToServer(),

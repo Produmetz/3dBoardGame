@@ -114,13 +114,13 @@ class NetworkManager {
         this.send({ type: 'list_rooms' });
     }
 
-    createRoom(roomName, password, isPublic, boardX, boardY, boardZ, komi) {
+    createRoom(roomName, password, isPublic, gameType, boardX, boardY, boardZ, komi) {
         this.send({
             type: 'create_room',
             roomName: roomName,
             password: password || null,
             isPublic: isPublic,
-            gameType: 'go',
+            gameType: gameType,      // теперь передаётся извне
             boardX: boardX,
             boardY: boardY,
             boardZ: boardZ,
