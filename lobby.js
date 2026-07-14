@@ -160,25 +160,20 @@ class LobbyManager {
     }
 
     onRoomCreated(data) {
-        let gameUrl = data.gameType === 'chess' ? 'chess/chess.html' : 'go/go.html';
-        const params = new URLSearchParams({
-            network: 'true',
+        // Добавляем комнату в "Мои комнаты" вместо автоперенаправления
+        this.addMyRoom({
             roomId: data.roomId,
-            color: data.color || '',
-            role: 'player',
+            roomName: data.roomName || data.roomId,
             gameType: data.gameType,
-            boardX: data.boardX || '',
-            boardY: data.boardY || '',
-            boardZ: data.boardZ || '',
-            komi: data.komi || '',
-            isMyTurn: data.isMyTurn || false,
-            server: this.serverIndex,
-            token: this.authToken,
-            playerName: this.nickname
+            color: data.color,
+            role: 'player',
+            boardX: data.boardX,
+            boardY: data.boardY,
+            boardZ: data.boardZ,
+            komi: data.komi,
+            isMyTurn: data.isMyTurn
         });
-        if (data.roomName) params.set('roomName', data.roomName);
-
-        window.location.href = gameUrl + '?' + params.toString();
+        this.requestRoomList();
     }
 
     addMyRoom(data) {
@@ -190,7 +185,12 @@ class LobbyManager {
                 roomName: data.roomName || data.roomId,
                 gameType: data.gameType,
                 color: data.color,
-                role: data.role || 'player'
+                role: data.role || 'player',
+                boardX: data.boardX || '',
+                boardY: data.boardY || '',
+                boardZ: data.boardZ || '',
+                komi: data.komi || '',
+                isMyTurn: data.isMyTurn || false
             });
         }
         this.showMyRooms();
@@ -214,6 +214,22 @@ class LobbyManager {
         this.myRooms.forEach(room => {
             const div = document.createElement('div');
             div.className = 'room-item';
+            const gameUrl = room.gameType === 'chess' ? 'chess/chess.html' : 'go/go.html';
+            const gameParams = new URLSearchParams({
+                network: 'true',
+                roomId: room.roomId,
+                color: room.color || '',
+                role: room.role,
+                gameType: room.gameType,
+                boardX: room.boardX || '',
+                boardY: room.boardY || '',
+                boardZ: room.boardZ || '',
+                komi: room.komi || '',
+                isMyTurn: room.isMyTurn || false,
+                server: this.serverIndex,
+                token: this.authToken,
+                playerName: this.nickname
+            });
             div.innerHTML = `
                 <div class="room-item-header">
                     <span class="room-name">${this.escapeHtml(room.roomName)}</span>
@@ -224,7 +240,7 @@ class LobbyManager {
                     <span>Роль: ${room.role === 'spectator' ? 'Зритель' : 'Игрок'}</span>
                 </div>
                 <div class="btn-group" style="margin-top:0.5rem;">
-                    <a href="${room.gameType === 'chess' ? 'chess/chess.html' : 'go/go.html'}?network=true&roomId=${room.roomId}&color=${room.color || ''}&role=${room.role}&gameType=${room.gameType}&server=${this.serverIndex}&token=${this.authToken}&playerName=${this.nickname}" class="btn btn-primary btn-sm">Войти</a>
+                    <a href="${gameUrl}?${gameParams.toString()}" class="btn btn-primary btn-sm">Войти</a>
                     <button class="btn btn-danger btn-sm" onclick="lobby.leaveRoom('${room.roomId}')">Покинуть</button>
                 </div>
             `;
