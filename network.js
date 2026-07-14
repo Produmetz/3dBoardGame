@@ -72,8 +72,17 @@ class NetworkManager {
 
             this.socket.onclose = () => {
                 this.connected = false;
-                this.game.updateNetworkStatus('Отключено');
-                this.game.showNetworkConnect();
+                // Если соединение закрылось и мы на странице игры — возвращаем в лобби
+                if (window.location.search.includes('network=true')) {
+                    const params = new URLSearchParams(window.location.search);
+                    const serverIndex = params.get('serverIndex') || '0';
+                    const token = params.get('token') || '';
+                    const playerName = params.get('playerName') || '';
+                    window.location.href = `../lobby.html?server=${serverIndex}&token=${token}&nickname=${playerName}`;
+                } else {
+                    this.game.updateNetworkStatus('Отключено');
+                    this.game.showNetworkConnect();
+                }
             };
 
             this.socket.onerror = (error) => {
