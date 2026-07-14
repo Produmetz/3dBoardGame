@@ -80,11 +80,14 @@ class LobbyManager {
     handleMessage(data) {
         switch (data.type) {
             case 'joined':
-            case 'joined_room':
                 this.requestRoomList();
                 this.requestStats();
                 this.requestGameHistory();
                 this.loadLeaderboard();
+                break;
+
+            case 'joined_room':
+                this.onJoinedRoom(data);
                 break;
 
             case 'room_list':
@@ -104,13 +107,58 @@ class LobbyManager {
                 break;
 
             case 'room_created':
-                this.requestRoomList();
+                this.onRoomCreated(data);
                 break;
 
             case 'error':
                 alert(data.message);
                 break;
         }
+    }
+
+    onJoinedRoom(data) {
+        let gameUrl = data.gameType === 'chess' ? 'chess/chess.html' : 'go/go.html';
+        const params = new URLSearchParams({
+            network: 'true',
+            roomId: data.roomId,
+            color: data.color,
+            role: data.role || 'player',
+            gameType: data.gameType,
+            boardX: data.boardX || '',
+            boardY: data.boardY || '',
+            boardZ: data.boardZ || '',
+            komi: data.komi || '',
+            isMyTurn: data.isMyTurn || false,
+            opponentName: data.opponentName || '',
+            serverIndex: this.serverIndex,
+            token: this.authToken,
+            playerName: this.nickname
+        });
+        if (data.roomName) params.set('roomName', data.roomName);
+
+        window.location.href = gameUrl + '?' + params.toString();
+    }
+
+    onRoomCreated(data) {
+        let gameUrl = data.gameType === 'chess' ? 'chess/chess.html' : 'go/go.html';
+        const params = new URLSearchParams({
+            network: 'true',
+            roomId: data.roomId,
+            color: data.color,
+            role: 'player',
+            gameType: data.gameType,
+            boardX: data.boardX || '',
+            boardY: data.boardY || '',
+            boardZ: data.boardZ || '',
+            komi: data.komi || '',
+            isMyTurn: data.isMyTurn || false,
+            serverIndex: this.serverIndex,
+            token: this.authToken,
+            playerName: this.nickname
+        });
+        if (data.roomName) params.set('roomName', data.roomName);
+
+        window.location.href = gameUrl + '?' + params.toString();
     }
 
     send(data) {
@@ -170,6 +218,7 @@ class LobbyManager {
     selectRoom(room) {
         this.selectedRoomId = room.id;
         this.selectedRoomHasPassword = room.hasPassword;
+        this.selectedRoomGameType = room.gameType;
         document.getElementById('join-room-name').textContent = room.name;
         document.getElementById('join-password-group').style.display = room.hasPassword ? 'block' : 'none';
         document.getElementById('join-modal').classList.add('active');
