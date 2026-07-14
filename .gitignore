@@ -1,2 +1,28 @@
-.vscode
+# IDE
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
 *.db
+
+# Node
+node_modules/
+package-lock.json
+
+# Mimocode internal
+.mimocode/
+MEMORY.md
+PROJECT_ARCHIVE_DESCRIPTION.md
+
+# Docs (compose specs/plans/reports)
+docs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
