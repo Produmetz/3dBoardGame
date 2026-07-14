@@ -1,28 +1,40 @@
-# IDE
-.vscode/
-.idea/
+# Block everything
+*
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.db
+# Allow only project files
+!.gitignore
+!index.html
+!styles.css
+!network.js
+!lobby.html
+!lobby.js
+!lobby-styles.css
+!servers.html
+!servers.js
+!replay.html
+!server.py
+!requirements.txt
+!package.json
 
-# Node
-node_modules/
-package-lock.json
+# Chess
+!chess/
+!chess/*
+!chess/chess.html
+!chess/chess-engine.js
+!chess/event-handlers.js
+!chess/game.js
+!chess/graphics.js
+!chess/examples-list.json
+!chess/figures-tutorial.html
+!chess/figures-tutorial.js
+!chess/position-editor.html
+!chess/position-editor.js
 
-# Mimocode internal
-.mimocode/
-MEMORY.md
-PROJECT_ARCHIVE_DESCRIPTION.md
-
-# Docs (compose specs/plans/reports)
-docs/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
+# Go
+!go/
+!go/*
+!go/go.html
+!go/go-engine_v2.js
+!go/event-handlers-go.js
+!go/game-go.js
+!go/graphics-go.js
