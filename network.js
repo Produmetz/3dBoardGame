@@ -10,6 +10,7 @@ class NetworkManager {
         this.authToken = null;
         this.serverAddress = null;
         this.isSpectator = false;
+        this.lobbyServerIndex = null;
 
         this.checkLobbyRedirect();
     }
@@ -18,6 +19,7 @@ class NetworkManager {
         const params = new URLSearchParams(window.location.search);
         if (params.get('network') === 'true') {
             let server = params.get('server') || '';
+            this.lobbyServerIndex = server;
 
             // Если server — это число (индекс), получаем URL из localStorage
             if (server && !isNaN(parseInt(server))) {
@@ -39,6 +41,7 @@ class NetworkManager {
             const role = params.get('role') || 'player';
 
             this.authToken = token;
+            this.playerName = playerName;
             this.isSpectator = (role === 'spectator');
             this.pendingRoomId = params.get('roomId');
             this.pendingColor = params.get('color');
@@ -76,11 +79,10 @@ class NetworkManager {
             this.socket.onclose = () => {
                 this.connected = false;
                 // Если соединение закрылось и мы на странице игры — возвращаем в лобби
-                if (window.location.search.includes('network=true')) {
-                    const params = new URLSearchParams(window.location.search);
-                    const server = params.get('server') || params.get('serverIndex') || '0';
-                    const token = params.get('token') || '';
-                    const playerName = params.get('playerName') || '';
+                if (window.location.search.includes('network=true') || this.lobbyServerIndex) {
+                    const server = this.lobbyServerIndex || '0';
+                    const token = this.authToken || '';
+                    const playerName = this.playerName || '';
                     window.location.href = `../lobby.html?server=${server}&token=${token}&nickname=${playerName}`;
                 } else {
                     this.game.updateNetworkStatus('Отключено');
@@ -281,11 +283,10 @@ class NetworkManager {
         this.playerColor = null;
         this.opponentName = null;
 
-        // Перенаправляем обратно в лобби
-        const params = new URLSearchParams(window.location.search);
-        const server = params.get('server') || params.get('serverIndex') || '0';
-        const token = params.get('token') || '';
-        const playerName = params.get('playerName') || '';
+        // Перенаправляем обратно в лобби (параметры сохранены в constructor)
+        const server = this.lobbyServerIndex || '0';
+        const token = this.authToken || '';
+        const playerName = this.playerName || '';
         window.location.href = `../lobby.html?server=${server}&token=${token}&nickname=${playerName}`;
     }
 
@@ -339,11 +340,10 @@ class NetworkManager {
         }
         this.connected = false;
 
-        // Перенаправляем обратно в лобби
-        const params = new URLSearchParams(window.location.search);
-        const serverIndex = params.get('serverIndex') || '0';
-        const token = params.get('token') || '';
-        const playerName = params.get('playerName') || '';
-        window.location.href = `../lobby.html?server=${serverIndex}&token=${token}&nickname=${playerName}`;
+        // Перенаправляем обратно в лобби (параметры сохранены в constructor)
+        const server = this.lobbyServerIndex || '0';
+        const token = this.authToken || '';
+        const playerName = this.playerName || '';
+        window.location.href = `../lobby.html?server=${server}&token=${token}&nickname=${playerName}`;
     }
 }
