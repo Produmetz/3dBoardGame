@@ -156,6 +156,13 @@
         <div class="main-grid">
             <div class="left-column">
                 <div class="panel">
+                    <h2>Мои активные комнаты</h2>
+                    <div id="my-rooms-list" class="room-list">
+                        <div class="no-rooms">Нет активных комнат</div>
+                    </div>
+                </div>
+
+                <div class="panel">
                     <h2>Доступные комнаты</h2>
                     <div class="btn-group" style="margin-top:0; margin-bottom:0.8rem;">
                         <button id="refresh-btn" class="btn btn-secondary btn-sm">Обновить</button>
@@ -304,6 +311,20 @@
                 <select id="join-role">
                     <option value="player">Игрок</option>
                     <option value="spectator">Зритель</option>
+                </select>
+            </div>
+            <div class="input-group" id="join-color-mode-group" style="display:none;">
+                <label for="join-color-mode">Выбор цвета</label>
+                <select id="join-color-mode">
+                    <option value="auto">Автоматически</option>
+                    <option value="pick">Выбрать цвет</option>
+                </select>
+            </div>
+            <div class="input-group" id="join-color-select" style="display:none;">
+                <label for="join-color">Ваш цвет</label>
+                <select id="join-color">
+                    <option value="white">Белые</option>
+                    <option value="black">Чёрные</option>
                 </select>
             </div>
             <div class="btn-group">

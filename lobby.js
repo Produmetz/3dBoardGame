@@ -8,6 +8,7 @@ class LobbyManager {
         this.serverIndex = -1;
         this.selectedRoomId = null;
         this.selectedRoomHasPassword = false;
+        this.myRooms = [];
 
         this.parseParams();
         this.connectToServer();
@@ -42,9 +43,13 @@ class LobbyManager {
         document.getElementById('confirm-join').addEventListener('click', () => this.joinRoom());
         document.getElementById('room-game-type').addEventListener('change', (e) => {
             document.getElementById('go-options').style.display = e.target.value === 'go' ? 'block' : 'none';
+            document.getElementById('chess-options').style.display = e.target.value === 'chess' ? 'block' : 'none';
         });
         document.getElementById('leaderboard-game')?.addEventListener('change', () => this.loadLeaderboard());
         document.getElementById('logout-btn').addEventListener('click', () => this.logout());
+        document.getElementById('join-color-mode')?.addEventListener('change', (e) => {
+            document.getElementById('join-color-select').style.display = e.target.value === 'pick' ? 'block' : 'none';
+        });
     }
 
     connectToServer() {
@@ -87,7 +92,18 @@ class LobbyManager {
                 break;
 
             case 'joined_room':
-                this.onJoinedRoom(data);
+                // Если это реконнект — показываем в "Мои комнаты", не редиректим
+                if (this.isReconnecting) {
+                    this.isReconnecting = false;
+                    this.addMyRoom(data);
+                    this.requestRoomList();
+                    this.requestStats();
+                    this.requestGameHistory();
+                    this.loadLeaderboard();
+                } else {
+                    // Обычный вход в комнату — редиректим на игру
+                    this.onJoinedRoom(data);
+                }
                 break;
 
             case 'room_list':
@@ -110,6 +126,10 @@ class LobbyManager {
                 this.onRoomCreated(data);
                 break;
 
+            case 'left_room':
+                this.onLeftRoom();
+                break;
+
             case 'error':
                 alert(data.message);
                 break;
@@ -121,7 +141,7 @@ class LobbyManager {
         const params = new URLSearchParams({
             network: 'true',
             roomId: data.roomId,
-            color: data.color,
+            color: data.color || '',
             role: data.role || 'player',
             gameType: data.gameType,
             boardX: data.boardX || '',
@@ -144,7 +164,7 @@ class LobbyManager {
         const params = new URLSearchParams({
             network: 'true',
             roomId: data.roomId,
-            color: data.color,
+            color: data.color || '',
             role: 'player',
             gameType: data.gameType,
             boardX: data.boardX || '',
@@ -159,6 +179,64 @@ class LobbyManager {
         if (data.roomName) params.set('roomName', data.roomName);
 
         window.location.href = gameUrl + '?' + params.toString();
+    }
+
+    addMyRoom(data) {
+        // Добавляем комнату в список "Мои комнаты"
+        const existing = this.myRooms.find(r => r.roomId === data.roomId);
+        if (!existing) {
+            this.myRooms.push({
+                roomId: data.roomId,
+                roomName: data.roomName || data.roomId,
+                gameType: data.gameType,
+                color: data.color,
+                role: data.role || 'player'
+            });
+        }
+        this.showMyRooms();
+    }
+
+    removeMyRoom(roomId) {
+        this.myRooms = this.myRooms.filter(r => r.roomId !== roomId);
+        this.showMyRooms();
+    }
+
+    showMyRooms() {
+        const container = document.getElementById('my-rooms-list');
+        if (!container) return;
+
+        if (this.myRooms.length === 0) {
+            container.innerHTML = '<div class="no-rooms">Нет активных комнат</div>';
+            return;
+        }
+
+        container.innerHTML = '';
+        this.myRooms.forEach(room => {
+            const div = document.createElement('div');
+            div.className = 'room-item';
+            div.innerHTML = `
+                <div class="room-item-header">
+                    <span class="room-name">${this.escapeHtml(room.roomName)}</span>
+                    <span class="room-game-type">${room.gameType === 'chess' ? 'Шахматы' : 'Го'}</span>
+                </div>
+                <div class="room-info">
+                    <span>Ваш цвет: ${room.color || '?'}</span>
+                    <span>Роль: ${room.role === 'spectator' ? 'Зритель' : 'Игрок'}</span>
+                </div>
+                <div class="btn-group" style="margin-top:0.5rem;">
+                    <a href="${room.gameType === 'chess' ? 'chess/chess.html' : 'go/go.html'}?network=true&roomId=${room.roomId}&color=${room.color || ''}&role=${room.role}&gameType=${room.gameType}&serverIndex=${this.serverIndex}&token=${this.authToken}&playerName=${this.nickname}" class="btn btn-primary btn-sm">Войти</a>
+                    <button class="btn btn-danger btn-sm" onclick="lobby.leaveRoom('${room.roomId}')">Покинуть</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    onLeftRoom() {
+        // Очищаем список моих комнат и обновляем
+        this.myRooms = [];
+        this.showMyRooms();
+        this.requestRoomList();
     }
 
     send(data) {
@@ -194,9 +272,10 @@ class LobbyManager {
         rooms.forEach(room => {
             const div = document.createElement('div');
             div.className = 'room-item';
+            const isMyRoom = this.myRooms.some(r => r.roomId === room.id);
             div.innerHTML = `
                 <div class="room-item-header">
-                    <span class="room-name">${this.escapeHtml(room.name)} ${room.hasPassword ? '🔒' : ''}</span>
+                    <span class="room-name">${this.escapeHtml(room.name)} ${room.hasPassword ? '🔒' : ''} ${isMyRoom ? '<span style="color:#4caf50;">[Ваша]</span>' : ''}</span>
                     <span class="room-game-type">${room.gameType === 'chess' ? 'Шахматы' : 'Го'}</span>
                 </div>
                 <div class="room-info">
@@ -221,18 +300,49 @@ class LobbyManager {
         this.selectedRoomGameType = room.gameType;
         document.getElementById('join-room-name').textContent = room.name;
         document.getElementById('join-password-group').style.display = room.hasPassword ? 'block' : 'none';
+
+        // Показываем выбор цвета только для шахмат с free_choice
+        const colorModeGroup = document.getElementById('join-color-mode-group');
+        if (colorModeGroup) {
+            colorModeGroup.style.display = room.gameType === 'chess' ? 'block' : 'none';
+        }
+
         document.getElementById('join-modal').classList.add('active');
     }
 
     joinRoom() {
         const password = document.getElementById('join-password').value;
         const role = document.getElementById('join-role')?.value || 'player';
+        const colorMode = document.getElementById('join-color-mode')?.value || 'auto';
+        const color = document.getElementById('join-color')?.value || 'white';
+
         if (this.selectedRoomHasPassword && !password) {
             alert('Введите пароль');
             return;
         }
-        this.send({ type: 'join_room', roomId: this.selectedRoomId, password: password || null, role: role });
+
+        const msg = {
+            type: 'join_room',
+            roomId: this.selectedRoomId,
+            password: password || null,
+            role: role
+        };
+
+        // Если игрок выбирает цвет
+        if (role === 'player' && colorMode === 'pick') {
+            msg.color = color;
+        }
+
+        this.send(msg);
         document.getElementById('join-modal').classList.remove('active');
+    }
+
+    leaveRoom(roomId) {
+        if (confirm('Покинуть комнату?')) {
+            this.send({ type: 'leave_room' });
+            this.removeMyRoom(roomId);
+            this.requestRoomList();
+        }
     }
 
     createRoom() {
@@ -335,4 +445,10 @@ class LobbyManager {
 
 document.addEventListener('DOMContentLoaded', () => {
     window.lobby = new LobbyManager();
+
+    // Проверяем, есть ли активная комната — помечаем реконнект
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reconnect') === 'true') {
+        window.lobby.isReconnecting = true;
+    }
 });
