@@ -268,7 +268,13 @@ class NetworkManager {
         this.roomId = null;
         this.playerColor = null;
         this.opponentName = null;
-        this.game.showRoomList();
+
+        // Перенаправляем обратно в лобби
+        const params = new URLSearchParams(window.location.search);
+        const serverIndex = params.get('serverIndex') || '0';
+        const token = params.get('token') || '';
+        const playerName = params.get('playerName') || '';
+        window.location.href = `../lobby.html?server=${serverIndex}&token=${token}&nickname=${playerName}`;
     }
 
     sendMove(move) {
@@ -320,6 +326,12 @@ class NetworkManager {
             this.socket.close();
         }
         this.connected = false;
-        this.game.showNetworkConnect();
+
+        // Перенаправляем обратно в лобби
+        const params = new URLSearchParams(window.location.search);
+        const serverIndex = params.get('serverIndex') || '0';
+        const token = params.get('token') || '';
+        const playerName = params.get('playerName') || '';
+        window.location.href = `../lobby.html?server=${serverIndex}&token=${token}&nickname=${playerName}`;
     }
 }
