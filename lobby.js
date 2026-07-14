@@ -150,7 +150,7 @@ class LobbyManager {
             komi: data.komi || '',
             isMyTurn: data.isMyTurn || false,
             opponentName: data.opponentName || '',
-            serverIndex: this.serverIndex,
+            server: this.serverIndex,
             token: this.authToken,
             playerName: this.nickname
         });
@@ -172,7 +172,7 @@ class LobbyManager {
             boardZ: data.boardZ || '',
             komi: data.komi || '',
             isMyTurn: data.isMyTurn || false,
-            serverIndex: this.serverIndex,
+            server: this.serverIndex,
             token: this.authToken,
             playerName: this.nickname
         });
@@ -224,7 +224,7 @@ class LobbyManager {
                     <span>Роль: ${room.role === 'spectator' ? 'Зритель' : 'Игрок'}</span>
                 </div>
                 <div class="btn-group" style="margin-top:0.5rem;">
-                    <a href="${room.gameType === 'chess' ? 'chess/chess.html' : 'go/go.html'}?network=true&roomId=${room.roomId}&color=${room.color || ''}&role=${room.role}&gameType=${room.gameType}&serverIndex=${this.serverIndex}&token=${this.authToken}&playerName=${this.nickname}" class="btn btn-primary btn-sm">Войти</a>
+                    <a href="${room.gameType === 'chess' ? 'chess/chess.html' : 'go/go.html'}?network=true&roomId=${room.roomId}&color=${room.color || ''}&role=${room.role}&gameType=${room.gameType}&server=${this.serverIndex}&token=${this.authToken}&playerName=${this.nickname}" class="btn btn-primary btn-sm">Войти</a>
                     <button class="btn btn-danger btn-sm" onclick="lobby.leaveRoom('${room.roomId}')">Покинуть</button>
                 </div>
             `;

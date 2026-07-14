@@ -75,10 +75,10 @@ class NetworkManager {
                 // Если соединение закрылось и мы на странице игры — возвращаем в лобби
                 if (window.location.search.includes('network=true')) {
                     const params = new URLSearchParams(window.location.search);
-                    const serverIndex = params.get('serverIndex') || '0';
+                    const server = params.get('server') || params.get('serverIndex') || '0';
                     const token = params.get('token') || '';
                     const playerName = params.get('playerName') || '';
-                    window.location.href = `../lobby.html?server=${serverIndex}&token=${token}&nickname=${playerName}`;
+                    window.location.href = `../lobby.html?server=${server}&token=${token}&nickname=${playerName}`;
                 } else {
                     this.game.updateNetworkStatus('Отключено');
                     this.game.showNetworkConnect();
@@ -280,10 +280,10 @@ class NetworkManager {
 
         // Перенаправляем обратно в лобби
         const params = new URLSearchParams(window.location.search);
-        const serverIndex = params.get('serverIndex') || '0';
+        const server = params.get('server') || params.get('serverIndex') || '0';
         const token = params.get('token') || '';
         const playerName = params.get('playerName') || '';
-        window.location.href = `../lobby.html?server=${serverIndex}&token=${token}&nickname=${playerName}`;
+        window.location.href = `../lobby.html?server=${server}&token=${token}&nickname=${playerName}`;
     }
 
     sendMove(move) {
