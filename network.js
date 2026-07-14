@@ -1,4 +1,3 @@
-// network.js
 class NetworkManager {
     constructor(game) {
         this.game = game;
@@ -8,18 +7,63 @@ class NetworkManager {
         this.playerColor = null;
         this.opponentName = null;
         this.playerName = null;
+        this.authToken = null;
+        this.serverAddress = null;
+        this.isSpectator = false;
+
+        this.checkLobbyRedirect();
     }
 
-    connect(address, playerName) {
+    checkLobbyRedirect() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('network') === 'true') {
+            // Поддержка нового формата (serverIndex) и старого (server URL)
+            let server = params.get('server') || params.get('serverUrl') || 'wss://threedboardgames.onrender.com';
+            const serverIndex = params.get('serverIndex');
+
+            // Если указан serverIndex, получаем URL из localStorage
+            if (serverIndex !== null) {
+                try {
+                    const servers = JSON.parse(localStorage.getItem('lobby_servers') || '[]');
+                    if (servers[parseInt(serverIndex)]) {
+                        server = servers[parseInt(serverIndex)].url;
+                    }
+                } catch(e) {}
+            }
+
+            const token = params.get('token') || '';
+            const playerName = params.get('playerName') || 'Anonymous';
+            const role = params.get('role') || 'player';
+
+            this.authToken = token;
+            this.isSpectator = (role === 'spectator');
+            this.pendingRoomId = params.get('roomId');
+            this.pendingColor = params.get('color');
+            this.pendingOpponent = params.get('opponentName');
+            this.pendingRoomName = params.get('roomName');
+
+            setTimeout(() => {
+                this.connectWithToken(server, playerName, token);
+            }, 500);
+
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }
+
+    connectWithToken(address, playerName, token) {
         try {
-            this.socket = new WebSocket(address);
+            const wsUrl = address.replace('0.0.0.0', 'localhost');
+            this.socket = new WebSocket(wsUrl);
             this.playerName = playerName;
+            this.serverAddress = wsUrl;
 
             this.socket.onopen = () => {
                 this.connected = true;
-                this.game.updateNetworkStatus('Подключено к серверу');
-                this.send({ type: 'join', playerName: playerName });
-                this.game.showRoomList(); // После подключения показываем список комнат
+                if (token) {
+                    this.send({ type: 'auth_join', token: token, playerName: playerName });
+                } else {
+                    this.send({ type: 'join', playerName: playerName });
+                }
             };
 
             this.socket.onmessage = (event) => {
@@ -42,43 +86,108 @@ class NetworkManager {
         }
     }
 
+    connect(address, playerName) {
+        try {
+            this.socket = new WebSocket(address);
+            this.playerName = playerName;
+            this.serverAddress = address;
+
+            this.socket.onopen = () => {
+                this.connected = true;
+                const token = localStorage.getItem('lobby_token');
+                if (token) {
+                    this.authToken = token;
+                    this.send({ type: 'auth_join', token: token, playerName: playerName });
+                } else {
+                    this.send({ type: 'join', playerName: playerName });
+                }
+            };
+
+            this.socket.onmessage = (event) => {
+                this.handleMessage(JSON.parse(event.data));
+            };
+
+            this.socket.onclose = () => {
+                this.connected = false;
+            };
+
+            this.socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        } catch (error) {
+            console.error('Connection error:', error);
+        }
+    }
+
     handleMessage(data) {
         switch (data.type) {
             case 'joined':
-                // Подтверждение регистрации
                 break;
             case 'room_list':
                 this.game.displayRooms(data.rooms);
                 break;
             case 'room_created':
                 this.roomId = data.roomId;
-                this.playerColor = data.color;   // 'Black' или 'White'
-                this.game.updateRoomId(data.roomId);
-                this.game.updatePlayerColor(data.color);
-                this.game.updateOpponentName(null);
-                this.game.setBoardParams(data.boardX, data.boardY, data.boardZ, data.komi);
-                this.game.setMyTurn(data.color === 'Black');
-                this.game.switchToInRoom();
+                this.playerColor = data.color;
+                this.game.isNetworkGame = true;
+                if (data.boardX !== undefined) {
+                    this.game.setBoardParams(data.boardX, data.boardY, data.boardZ, data.komi);
+                }
+                this.game.setMyTurn(data.isMyTurn);
+                this.game.showRoomInfo(
+                    this.serverAddress || '—',
+                    data.roomId,
+                    data.roomName || data.roomId,
+                    data.gameType,
+                    this.playerName,
+                    data.color,
+                    null
+                );
                 break;
 
             case 'joined_room':
                 this.roomId = data.roomId;
-                this.playerColor = data.color;   // 'White' для Го
+                this.playerColor = data.color;
+                this.game.isNetworkGame = true;
                 this.opponentName = data.opponentName;
-                this.game.updateRoomId(data.roomId);
-                this.game.updatePlayerColor(data.color);
-                this.game.updateOpponentName(data.opponentName);
-                this.game.setBoardParams(data.boardX, data.boardY, data.boardZ, data.komi);
-                this.game.setMyTurn(data.color === 'White');   // для Го белые ходят вторыми
-                this.game.switchToInRoom();
+                if (data.role === 'spectator') {
+                    this.isSpectator = true;
+                }
+                if (data.boardX !== undefined) {
+                    this.game.setBoardParams(data.boardX, data.boardY, data.boardZ, data.komi);
+                }
+                this.game.setMyTurn(data.isMyTurn);
+                this.game.showRoomInfo(
+                    this.serverAddress || '—',
+                    data.roomId,
+                    data.roomName || data.roomId,
+                    data.gameType,
+                    this.playerName,
+                    data.color,
+                    null
+                );
+                if (data.opponentName) {
+                    this.game.updateOpponentInfo(data.opponentName, null, null);
+                }
+                if (this.isSpectator) {
+                    this.game.setMyTurn(false);
+                }
                 break;
             case 'opponent_joined':
                 this.opponentName = data.playerName;
-                this.game.updateOpponentName(this.opponentName);
+                this.game.updateOpponentInfo(data.playerName, null, null);
                 break;
             case 'opponent_left':
                 this.opponentName = null;
-                this.game.updateOpponentName('-');
+                this.game.showRoomInfo(
+                    this.serverAddress || '—',
+                    this.roomId,
+                    null,
+                    null,
+                    this.playerName,
+                    this.playerColor,
+                    null
+                );
                 break;
             case 'move':
                 this.game.makeMoveFromNetwork(data.move);
@@ -97,6 +206,24 @@ class NetworkManager {
                 break;
             case 'resign':
                 this.game.handleNetworkResign();
+                break;
+            case 'game_over':
+                this.game.handleGameOver(data);
+                break;
+            case 'draw_offer':
+                this.game.handleDrawOffer(data);
+                break;
+            case 'draw_response':
+                this.game.handleDrawResponse(data);
+                break;
+            case 'rematch_offer':
+                this.game.handleRematchOffer(data);
+                break;
+            case 'rematch_response':
+                this.game.handleRematchResponse(data);
+                break;
+            case 'rematch_start':
+                this.game.handleRematchStart(data);
                 break;
             case 'error':
                 alert(data.message);
@@ -120,7 +247,7 @@ class NetworkManager {
             roomName: roomName,
             password: password || null,
             isPublic: isPublic,
-            gameType: gameType,      // теперь передаётся извне
+            gameType: gameType,
             boardX: boardX,
             boardY: boardY,
             boardZ: boardZ,
@@ -159,12 +286,33 @@ class NetworkManager {
     sendUndoResponse(accepted) {
         this.send({ type: 'undo_response', accepted: accepted });
     }
+
     sendPass() {
         this.send({ type: 'pass' });
     }
 
     sendResign() {
         this.send({ type: 'resign' });
+    }
+
+    sendDrawOffer() {
+        this.send({ type: 'draw_offer' });
+    }
+
+    sendDrawResponse(accepted) {
+        this.send({ type: 'draw_response', accepted: accepted });
+    }
+
+    sendRematchOffer() {
+        this.send({ type: 'rematch_offer' });
+    }
+
+    sendRematchResponse(accepted) {
+        this.send({ type: 'rematch_response', accepted: accepted });
+    }
+
+    sendGameOver(winner) {
+        this.send({ type: 'game_over', winner: winner || null });
     }
 
     disconnect() {

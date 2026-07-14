@@ -101,21 +101,17 @@ class GoGame {
 
     handleCanvasClick(event) {
         const cellCoords = GraphicsEngine.cellFromClick(event.clientX, event.clientY);
-        if (!cellCoords) {
-            console.log('Клик мимо доски');
-            return;
-        }
+        if (!cellCoords) return;
+
+        if (this.networkManager && this.networkManager.isSpectator) return;
 
         const { i, j, k } = cellCoords;
         const idx = this.board.coordToIndex([i, j, k]);
         const stone = this.board.grid[idx];
-        console.log(`Клик по клетке [${i},${j},${k}], камень: ${stone === GoEngine.Stone.EMPTY ? 'пусто' : (stone === GoEngine.Stone.BLACK ? 'чёрный' : 'белый')}`);
 
-        // Снимаем предыдущее выделение
         GraphicsEngine.unselectCell();
 
         if (stone === GoEngine.Stone.EMPTY && this.isMyTurn) {
-            // Пустая клетка – проверяем возможность хода
             const currentPlayer = this.board.getCurrentPlayer();
             if (this.board.isLegalMove([i, j, k], currentPlayer)) {
                 GraphicsEngine.selectCell(i, j, k);
@@ -123,12 +119,7 @@ class GoGame {
             } else {
                 GraphicsEngine.flashCellInvalid(i, j, k);
                 setTimeout(() => GraphicsEngine.unselectCell(), 300);
-                console.log('Недопустимый ход');
             }
-        } else if (!this.isMyTurn) {
-            console.log('Сейчас не ваш ход');
-            GraphicsEngine.selectCell(i, j, k);
-            setTimeout(() => GraphicsEngine.unselectCell(), 200);
         }
     }
 
@@ -220,6 +211,10 @@ class GoGame {
             const score = this.board.computeScore();
             document.getElementById('game-status').textContent =
                 `Игра окончена. Счёт: чёрные ${score.black}, белые ${score.white}`;
+            if (this.isNetworkGame && !this.isNetworkMove) {
+                const winner = score.black > score.white ? 'Black' : (score.white > score.black ? 'White' : null);
+                this.networkManager.sendGameOver(winner);
+            }
         } else {
             document.getElementById('game-status').textContent = '';
         }
@@ -316,19 +311,9 @@ class GoGame {
         this.networkManager.createRoom(name, pwd || null, isPublic, 'go', boardX, boardY, boardZ, komi);
     }
 
-    cancelCreateRoom() {
-        document.getElementById('create-room-panel').style.display = 'none';
-    }
-
-    confirmJoinRoom() {
-        const pwd = document.getElementById('join-room-password').value;
-        this.networkManager.joinRoom(this.selectedRoomId, pwd || null);
-        document.getElementById('join-room-panel').style.display = 'none';
-    }
-
-    cancelJoinRoom() {
-        document.getElementById('join-room-panel').style.display = 'none';
-    }
+    cancelCreateRoom() {}
+    confirmJoinRoom() {}
+    cancelJoinRoom() {}
 
     leaveRoom() {
         this.networkManager.leaveRoom();
@@ -453,50 +438,41 @@ class GoGame {
         }
     }
 
-    showNetworkConnect() {
-        document.getElementById('network-connect').style.display = 'block';
-        document.getElementById('network-rooms').style.display = 'none';
-        document.getElementById('network-inroom').style.display = 'none';
+    showRoomInfo(serverAddress, roomId, roomName, gameType, myName, myColor, myRating) {
+        const panel = document.getElementById('network-panel');
+        panel.style.display = 'block';
+        document.getElementById('net-server-address').textContent = serverAddress;
+        document.getElementById('net-room-id').textContent = roomId;
+        document.getElementById('net-room-name').textContent = roomName || roomId;
+        document.getElementById('net-game-type').textContent = gameType === 'chess' ? 'Шахматы' : 'Го';
+        document.getElementById('net-my-name').textContent = myName;
+        document.getElementById('net-my-color').textContent = myColor;
+        document.getElementById('net-my-rating').textContent = myRating || '—';
+        document.getElementById('net-opponent-name').textContent = 'Ожидание...';
+        document.getElementById('net-opponent-info').style.display = 'none';
+        document.getElementById('net-opponent-name').style.display = 'inline';
     }
 
-    showRoomList() {
-        document.getElementById('network-connect').style.display = 'none';
-        document.getElementById('network-rooms').style.display = 'block';
-        document.getElementById('network-inroom').style.display = 'none';
-        this.networkManager.requestRoomList();
+    updateOpponentInfo(name, color, rating) {
+        document.getElementById('net-opponent-name').style.display = 'none';
+        document.getElementById('net-opponent-info').style.display = 'inline';
+        document.getElementById('net-opponent-name').textContent = name;
+        document.getElementById('net-opponent-color').textContent = color;
+        document.getElementById('net-opponent-rating').textContent = rating || '—';
+    }
+
+    hideNetworkPanel() {
+        document.getElementById('network-panel').style.display = 'none';
     }
 
     switchToInRoom() {
-        document.getElementById('network-connect').style.display = 'none';
-        document.getElementById('network-rooms').style.display = 'none';
-        document.getElementById('network-inroom').style.display = 'block';
+        document.getElementById('network-panel').style.display = 'block';
     }
 
-    displayRooms(rooms) {
-        const listDiv = document.getElementById('rooms-list');
-        listDiv.innerHTML = '';
-        if (!rooms.length) {
-            listDiv.innerHTML = '<p>Нет доступных комнат</p>';
-            return;
-        }
-        rooms.forEach(room => {
-            const roomDiv = document.createElement('div');
-            roomDiv.style.cursor = 'pointer';
-            roomDiv.style.padding = '5px';
-            roomDiv.style.borderBottom = '1px solid #4cc9f0';
-            roomDiv.innerHTML = `${room.name} (${room.playersCount}/2) ${room.hasPassword ? '🔒' : ''} ${room.isPublic ? '🌍' : '🔐'}`;
-            roomDiv.onclick = () => this.selectRoom(room);
-            listDiv.appendChild(roomDiv);
-        });
-    }
-
-    selectRoom(room) {
-        document.getElementById('selected-room-name').textContent = room.name;
-        document.getElementById('join-room-panel').style.display = 'block';
-        document.getElementById('join-room-password').value = '';
-        this.selectedRoomId = room.id;
-        this.selectedRoomHasPassword = room.hasPassword;
-    }
+    showRoomList() {}
+    showNetworkConnect() {}
+    displayRooms() {}
+    selectRoom() {}
 
     handleAxisChange(axisId) {
         let axis = null;

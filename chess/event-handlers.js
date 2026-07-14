@@ -23,7 +23,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Основные кнопки управления
     const buttonHandlers = {
         'save-settings': () => window.chessGame?.saveSettings(),
         'load-settings': () => document.getElementById('settings-file-input').click(),
@@ -33,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!window.chessGame?.isNetworkGame) {
                 window.chessGame?.undoMove();
             } else {
-                alert('В сетевом режиме используйте "Предложить отмену хода"');
+                alert('В сетевом режиме используйте "Отмена хода"');
             }
         },
         'cancel-undo': () => window.chessGame?.cancelUndoRequest(),
@@ -41,20 +40,39 @@ document.addEventListener('DOMContentLoaded', function () {
         'position-editor': () => {
             window.location.href = 'position-editor.html';
         },
-        // Сетевые кнопки
-        'connect-btn': () => window.chessGame?.connectToServer(),
-        'refresh-rooms-btn': () => window.chessGame?.refreshRooms(),
-        'create-room-btn': () => {
-            document.getElementById('create-room-panel').style.display = 'block';
-        },
-        'confirm-create-room-btn': () => window.chessGame?.confirmCreateRoom(),
-        'cancel-create-room-btn': () => window.chessGame?.cancelCreateRoom(),
-        'confirm-join-room-btn': () => window.chessGame?.confirmJoinRoom(),
-        'cancel-join-room-btn': () => window.chessGame?.cancelJoinRoom(),
-        'disconnect-from-server-btn': () => window.chessGame?.disconnect(),
         'leave-room-btn': () => window.chessGame?.leaveRoom(),
         'offer-undo': () => window.chessGame?.offerUndo(),
-        'send-chat-btn': () => window.chessGame?.sendChatMessage()
+        'send-chat-btn': () => window.chessGame?.sendChatMessage(),
+        'offer-draw': () => {
+            if (window.chessGame?.isNetworkGame) {
+                alert('Предложение ничьей пока не реализовано');
+            }
+        },
+        'resign-btn': () => {
+            if (window.chessGame?.isNetworkGame) {
+                if (confirm('Вы уверены, что хотите сдаться?')) {
+                    window.chessGame?.networkManager?.sendResign();
+                }
+            }
+        },
+        'offer-draw': () => {
+            if (window.chessGame?.isNetworkGame) {
+                window.chessGame?.networkManager?.sendDrawOffer();
+            }
+        },
+        'rematch-btn': () => {
+            if (window.chessGame?.isNetworkGame) {
+                document.getElementById('rematch-status').style.display = 'block';
+                document.getElementById('rematch-status').textContent = 'Ожидание ответа...';
+                window.chessGame?.networkManager?.sendRematchOffer();
+            }
+        },
+        'back-to-lobby-btn': () => {
+            if (window.chessGame?.isNetworkGame) {
+                window.chessGame.networkManager.send({ type: 'leave_room' });
+            }
+            window.location.href = '../lobby.html';
+        }
     };
 
     Object.keys(buttonHandlers).forEach(id => {
@@ -126,13 +144,12 @@ document.getElementById('toggle-panels').addEventListener('click', () => {
     right.classList.toggle('hidden');
 });
 
-document.getElementById('select-chess').addEventListener('click', () => {
+document.getElementById('select-chess')?.addEventListener('click', () => {
     window.chessGame.gameType = 'chess';
     window.chessGame.resetGame();
-    // визуально подсветить активную кнопку
 });
 
-document.getElementById('select-go').addEventListener('click', () => {
+document.getElementById('select-go')?.addEventListener('click', () => {
     window.chessGame.gameType = 'go';
     window.chessGame.resetGame();
 });

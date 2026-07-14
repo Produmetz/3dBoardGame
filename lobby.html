@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Chess & Go – Лобби</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .room-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #2a3a4a;
+            border-radius: 8px;
+        }
+
+        .room-item {
+            padding: 0.8rem;
+            border-bottom: 1px solid #2a3a4a;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .room-item:last-child {
+            border-bottom: none;
+        }
+
+        .room-item:hover {
+            background: rgba(76, 201, 240, 0.1);
+        }
+
+        .room-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.3rem;
+        }
+
+        .room-name {
+            font-weight: 500;
+            color: #c9e9ff;
+        }
+
+        .room-game-type {
+            font-size: 0.75rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 10px;
+            background: #1e2a36;
+            color: #4cc9f0;
+        }
+
+        .room-info {
+            font-size: 0.8rem;
+            color: #9bb4d0;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .no-rooms {
+            padding: 1.5rem;
+            text-align: center;
+            color: #7a8eaa;
+            font-size: 0.85rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card {
+            background: #0e1622;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-card .stat-game {
+            font-size: 0.8rem;
+            color: #9bb4d0;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .stat-rating {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #4cc9f0;
+        }
+
+        .stat-card .stat-record {
+            font-size: 0.8rem;
+            color: #7a8eaa;
+            margin-top: 0.3rem;
+        }
+
+        .history-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem;
+            border-bottom: 1px solid #2a3a4a;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .history-item:hover {
+            background: rgba(76, 201, 240, 0.05);
+        }
+
+        .history-result.win { color: #4caf50; }
+        .history-result.loss { color: #f05454; }
+        .history-result.draw { color: #9bb4d0; }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .checkbox-group label {
+            font-size: 0.85rem;
+            color: #9bb4d0;
+        }
+
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="server-name">Лобби</h1>
+            <div class="header-actions">
+                <a href="servers.html" class="back-btn">← Сменить сервер</a>
+                <button id="logout-btn" class="btn btn-secondary btn-sm">Выйти</button>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="left-column">
+                <div class="panel">
+                    <h2>Доступные комнаты</h2>
+                    <div class="btn-group" style="margin-top:0; margin-bottom:0.8rem;">
+                        <button id="refresh-btn" class="btn btn-secondary btn-sm">Обновить</button>
+                        <button id="create-room-btn" class="btn btn-primary btn-sm">Создать комнату</button>
+                    </div>
+                    <div id="room-list" class="room-list">
+                        <div class="no-rooms">Нет доступных комнат</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>История игр</h2>
+                    <div id="history-list" class="history-list">
+                        <div class="no-rooms">Нет сохранённых игр</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-column">
+                <div class="panel">
+                    <h2>Мой профиль</h2>
+                    <div id="stats-nickname" style="color:#4cc9f0; margin-bottom:0.5rem;"></div>
+                    <div id="stats-skill" style="font-size:0.85rem; color:#9bb4d0; margin-bottom:0.8rem;"></div>
+                    <div style="margin-bottom:0.8rem;">
+                        <label style="font-size:0.8rem; color:#7a8eaa;">
+                            <input type="checkbox" id="public-rating-toggle" checked> Показать в рейтинге
+                        </label>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-game">Шахматы</div>
+                            <div class="stat-rating" id="chess-rating">—</div>
+                            <div class="stat-record" id="chess-record">0 игр</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-game">Го</div>
+                            <div class="stat-rating" id="go-rating">—</div>
+                            <div class="stat-record" id="go-record">0 игр</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>Таблица лидеров</h2>
+                    <div style="margin-bottom:0.8rem;">
+                        <select id="leaderboard-game" style="padding:0.3rem; border-radius:5px; background:#1e2a36; color:#eef4ff; border:1px solid #2c3e4e;">
+                            <option value="chess">Шахматы</option>
+                            <option value="go">Го</option>
+                        </select>
+                    </div>
+                    <div id="leaderboard-list" style="max-height:300px; overflow-y:auto;">
+                        <div style="color:#7a8eaa; text-align:center;">Нет данных</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Room Modal -->
+    <div class="modal-overlay" id="create-modal">
+        <div class="modal">
+            <h3>Создать комнату</h3>
+            <div class="input-group">
+                <label for="room-name">Название</label>
+                <input type="text" id="room-name" placeholder="Моя комната">
+            </div>
+            <div class="input-group">
+                <label for="room-password">Пароль (необязательно)</label>
+                <input type="password" id="room-password" placeholder="Оставьте пустым для открытой">
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="room-public" checked>
+                <label for="room-public">Публичная комната</label>
+            </div>
+            <div class="input-group">
+                <label for="room-game-type">Тип игры</label>
+                <select id="room-game-type">
+                    <option value="chess">Шахматы</option>
+                    <option value="go">Го</option>
+                </select>
+            </div>
+            <div id="go-options" style="display:none;">
+                <div class="input-group">
+                    <label for="room-board-x">Размер X</label>
+                    <input type="number" id="room-board-x" value="4" min="3" max="10">
+                </div>
+                <div class="input-group">
+                    <label for="room-board-y">Размер Y</label>
+                    <input type="number" id="room-board-y" value="4" min="3" max="10">
+                </div>
+                <div class="input-group">
+                    <label for="room-board-z">Размер Z</label>
+                    <input type="number" id="room-board-z" value="4" min="3" max="10">
+                </div>
+                <div class="input-group">
+                    <label for="room-komi">Коми</label>
+                    <input type="number" id="room-komi" value="6.5" step="0.5" min="0" max="100">
+                </div>
+            </div>
+            <div id="chess-options">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="room-allow-spectators" checked>
+                    <label for="room-allow-spectators">Разрешить зрителей</label>
+                </div>
+                <div class="input-group">
+                    <label for="room-creator-color">Ваш цвет</label>
+                    <select id="room-creator-color">
+                        <option value="white">Белые</option>
+                        <option value="black">Чёрные</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="room-color-mode">Цвет второго игрока</label>
+                    <select id="room-color-mode">
+                        <option value="creator_pick">Создатель выбирает</option>
+                        <option value="free_choice">Свободный выбор</option>
+                    </select>
+                </div>
+            </div>
+            <div class="input-group">
+                <label for="room-game-mode">Режим игры</label>
+                <select id="room-game-mode">
+                    <option value="rated">Рейтинговая</option>
+                    <option value="unranked">Без рейтинга</option>
+                    <option value="casual">Свободная</option>
+                </select>
+            </div>
+            <div class="btn-group">
+                <button id="confirm-create" class="btn btn-primary">Создать</button>
+                <button id="cancel-create" class="btn btn-secondary">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Join Room Modal -->
+    <div class="modal-overlay" id="join-modal">
+        <div class="modal">
+            <h3>Войти в комнату</h3>
+            <p id="join-room-name" style="margin-bottom:1rem; color:#9bb4d0;"></p>
+            <div class="input-group" id="join-password-group" style="display:none;">
+                <label for="join-password">Пароль</label>
+                <input type="password" id="join-password" placeholder="Введите пароль">
+            </div>
+            <div class="input-group">
+                <label for="join-role">Роль</label>
+                <select id="join-role">
+                    <option value="player">Игрок</option>
+                    <option value="spectator">Зритель</option>
+                </select>
+            </div>
+            <div class="btn-group">
+                <button id="confirm-join" class="btn btn-primary">Присоединиться</button>
+                <button id="cancel-join" class="btn btn-secondary">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="lobby.js"></script>
+</body>
+</html>

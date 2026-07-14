@@ -422,12 +422,15 @@
 
 <body>
     <button id="toggle-panels" class="game-btn">☰</button>
+    <!-- Кнопка возврата в лобби (только для сетевой игры) -->
+    <div id="back-to-lobby" style="position: fixed; top: 20px; left: 20px; z-index: 50; display: none;">
+        <a href="../index.html" class="game-btn" style="background:#1e2a36; color:#9bb4d0; text-decoration: none;">← Назад</a>
+    </div>
     <!-- Левая панель с подсказками и историей ходов -->
     <div id="left-panel">
         <div class="buttons-row">
-            <div class="buttons-row">
-                <a href="../go/go.html" class="game-btn">Играть в Го</a>
-            </div>
+            <a href="../go/go.html" class="game-btn">Играть в Го</a>
+            <a href="../lobby.html?game=chess" class="game-btn" style="background:#4cc9f0;color:#0a192f;">Сетевая игра</a>
         </div>
         <!-- Секция подсказок (по умолчанию свёрнута) -->
         <div class="panel-section collapsed">
@@ -525,80 +528,64 @@
             </div>
         </div>
 
-        <!-- Сетевая игра -->
-        <div class="panel-section collapsed">
-            <h3>Сетевая игра</h3>
+        <!-- Сетевая комната (скрыта по умолчанию, показывается при сетевой игре) -->
+        <div class="panel-section collapsed" id="network-panel" style="display:none;">
+            <h3>Сетевая комната</h3>
             <div class="panel-content">
-                <!-- Режим подключения -->
-                <div id="network-connect">
-                    <input type="text" id="server-address" class="network-input" placeholder="Адрес сервера"
-                        value="wss://threedboardgames.onrender.com">
-                    <input type="text" id="player-name" class="network-input" placeholder="Ваше имя">
-                    <div class="buttons-row">
-                        <button id="connect-btn" class="game-btn">Подключиться</button>
+                <div id="room-info-section">
+                    <div style="margin-bottom:8px;">
+                        <span style="color:#7bdff9;">Сервер:</span> <span id="net-server-address">—</span>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <span style="color:#7bdff9;">Комната:</span> <span id="net-room-name">—</span>
+                        (<span id="net-room-id">—</span>)
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <span style="color:#7bdff9;">Тип:</span> <span id="net-game-type">Шахматы</span>
                     </div>
                 </div>
 
-                <!-- Режим списка комнат (после подключения) -->
-                <div id="network-rooms" style="display: none;">
-                    <h5>Комнаты на сервере</h5>
-                    <div id="rooms-list"
-                        style="max-height: 150px; overflow-y: auto; border: 1px solid #4cc9f0; padding: 5px; margin-bottom: 10px;">
+                <div style="border-top:1px solid #4cc9f0; padding-top:8px; margin-top:8px;">
+                    <div style="margin-bottom:6px;">
+                        <span style="color:#7bdff9;">Вы:</span>
+                        <span id="net-my-name">—</span>
+                        (<span id="net-my-color">—</span>)
+                        — рейтинг: <span id="net-my-rating">—</span>
                     </div>
-                    <div class="buttons-row">
-                        <button id="refresh-rooms-btn" class="game-btn">Обновить список</button>
-                        <button id="create-room-btn" class="game-btn">Создать комнату</button>
-                        <button id="disconnect-from-server-btn" class="game-btn">Отключиться</button>
-                    </div>
-
-                    <!-- Панель создания комнаты -->
-                    <div id="create-room-panel" style="margin-top: 10px; display: none;">
-                        <input type="text" id="new-room-name" class="network-input" placeholder="Название комнаты">
-                        <input type="password" id="new-room-password" class="network-input"
-                            placeholder="Пароль (оставьте пустым)">
-                        <label><input type="checkbox" id="new-room-public" checked> Публичная комната</label>
-                        <div class="buttons-row">
-                            <button id="confirm-create-room-btn" class="game-btn">Создать</button>
-                            <button id="cancel-create-room-btn" class="game-btn">Отмена</button>
-                        </div>
-                    </div>
-
-                    <!-- Панель присоединения к комнате -->
-                    <div id="join-room-panel" style="margin-top: 10px; display: none;">
-                        <p>Подключение к комнате <span id="selected-room-name"></span></p>
-                        <input type="password" id="join-room-password" class="network-input"
-                            placeholder="Пароль (если требуется)">
-                        <div class="buttons-row">
-                            <button id="confirm-join-room-btn" class="game-btn">Присоединиться</button>
-                            <button id="cancel-join-room-btn" class="game-btn">Отмена</button>
-                        </div>
+                    <div>
+                        <span style="color:#7bdff9;">Противник:</span>
+                        <span id="net-opponent-name" style="color:#9bb4d0;">Ожидание...</span>
+                        <span id="net-opponent-info" style="display:none;">
+                            (<span id="net-opponent-color">—</span>)
+                            — рейтинг: <span id="net-opponent-rating">—</span>
+                        </span>
                     </div>
                 </div>
 
-                <!-- Режим внутри комнаты (старый интерфейс) -->
-                <div id="network-inroom" style="display: none;">
-                    <div>ID комнаты: <span id="room-id-display">-</span></div>
-                    <div>Ваш цвет: <span id="player-color">-</span></div>
-                    <div>Противник: <span id="opponent-name">-</span></div>
-                    <button id="offer-undo" class="game-btn">Предложить отмену хода</button>
-                    <div id="undo-status" style="margin-top: 10px; display: none;">
+                <div style="border-top:1px solid #4cc9f0; padding-top:8px; margin-top:8px;">
+                    <div style="font-size:0.9em; color:#7bdff9; margin-bottom:4px;">Чат</div>
+                    <div id="chat-messages"
+                        style="height: 80px; overflow-y: auto; border: 1px solid #4cc9f0; padding: 5px; margin-bottom:5px;"></div>
+                    <div style="display:flex; gap:5px;">
+                        <input type="text" id="chat-input" class="network-input" placeholder="Сообщение..." style="flex:1;">
+                        <button id="send-chat-btn" class="game-btn" style="padding:5px 10px;">→</button>
+                    </div>
+                </div>
+
+                <div style="border-top:1px solid #4cc9f0; padding-top:8px; margin-top:8px;">
+                    <div class="buttons-row">
+                        <button id="offer-undo" class="game-btn">Отмена хода</button>
+                        <button id="offer-draw" class="game-btn">Ничья</button>
+                        <button id="resign-btn" class="game-btn">Сдаться</button>
+                    </div>
+                    <div id="undo-status" style="margin-top:5px; display:none; text-align:center;">
                         Ожидание ответа...
-                        <button id="cancel-undo" class="game-btn" style="margin-left: 10px;">Отменить</button>
+                        <button id="cancel-undo" class="game-btn" style="margin-left:5px; padding:3px 8px;">✕</button>
                     </div>
-                    <div class="sub-section collapsed" style="margin-top:10px;">
-                        <h4 style="font-size:0.9em;">Чат</h4>
-                        <div class="sub-content">
-                            <div id="chat-messages"
-                                style="height: 100px; overflow-y: auto; border: 1px solid #4cc9f0; padding: 5px;"></div>
-                            <input type="text" id="chat-input" class="network-input" placeholder="Сообщение...">
-                            <button id="send-chat-btn" class="game-btn">Отправить</button>
-                        </div>
+                    <div class="buttons-row" style="margin-top:8px;">
+                        <button id="leave-room-btn" class="game-btn">Покинуть комнату</button>
                     </div>
-                    <button id="leave-room-btn" class="game-btn" style="margin-top:10px;">Покинуть комнату</button>
                 </div>
-
-                <!-- Строка статуса сети -->
-                <div id="network-status" style="margin-top: 10px; font-style: italic;">Не подключено</div>
             </div>
         </div>
 
@@ -666,6 +653,19 @@
         </div>
     </div>
 
+    <!-- Панель результата игры (скрыта по умолчанию) -->
+    <div id="game-result-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:100; background:rgba(10,25,47,0.95); border:2px solid #4cc9f0; border-radius:15px; padding:30px; min-width:320px; text-align:center; box-shadow:0 0 30px rgba(76,201,240,0.3);">
+        <h2 style="color:#4cc9f0; margin-bottom:15px;">ИГРА ОКОНЧЕНА</h2>
+        <div id="game-result-text" style="font-size:1.2em; color:#eef4ff; margin-bottom:10px;"></div>
+        <div id="game-result-reason" style="font-size:0.9em; color:#9bb4d0; margin-bottom:20px;"></div>
+        <div id="game-result-mode" style="font-size:0.8em; color:#7a8eaa; margin-bottom:15px;"></div>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            <button id="rematch-btn" class="game-btn" style="background:#4cc9f0; color:#0a192f;">Реванш</button>
+            <button id="back-to-lobby-btn" class="game-btn">В лобби</button>
+        </div>
+        <div id="rematch-status" style="margin-top:10px; color:#9bb4d0; display:none;"></div>
+    </div>
+
     <!-- Скрытый input для выбора файла -->
     <input type="file" id="file-input" accept=".txt" style="display: none;">
 
@@ -683,7 +683,20 @@
 
     <!-- Скрипт для работы с панелями управления -->
     <script>
-
+        // Показать кнопку возврата в лобби для сетевой игры
+        (function() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('network') === 'true') {
+                const backBtn = document.getElementById('back-to-lobby');
+                if (backBtn) {
+                    backBtn.style.display = 'block';
+                    const serverIndex = params.get('serverIndex') || '0';
+                    const token = params.get('token') || '';
+                    const nickname = params.get('playerName') || '';
+                    backBtn.querySelector('a').href = `../lobby.html?server=${serverIndex}&token=${token}&nickname=${nickname}`;
+                }
+            }
+        })();
     </script>
 </body>
 

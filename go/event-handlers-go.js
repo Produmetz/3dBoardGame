@@ -29,22 +29,26 @@ document.addEventListener('DOMContentLoaded', function () {
         'new-game': () => window.goGame?.resetGame(),
         'pass-btn': () => window.goGame?.pass(),
         'undo-move': () => window.goGame?.handleUndoClick(),
-        'resign-btn': () => window.goGame?.resign(),
         'apply-go-size': () => window.goGame?.resetGame(),
-        'connect-btn': () => window.goGame?.connectToServer(),
-        'refresh-rooms-btn': () => window.goGame?.refreshRooms(),
-        'create-room-btn': () => {
-            document.getElementById('create-room-panel').style.display = 'block';
-        },
-        'confirm-create-room-btn': () => window.goGame?.confirmCreateRoom(),
-        'cancel-create-room-btn': () => window.goGame?.cancelCreateRoom(),
-        'confirm-join-room-btn': () => window.goGame?.confirmJoinRoom(),
-        'cancel-join-room-btn': () => window.goGame?.cancelJoinRoom(),
-        'disconnect-from-server-btn': () => window.goGame?.disconnect(),
         'leave-room-btn': () => window.goGame?.leaveRoom(),
         'cancel-undo': () => window.goGame?.cancelUndoRequest(),
         'offer-undo': () => window.goGame?.offerUndo(),
-        'send-chat-btn': () => window.goGame?.sendChatMessage()
+        'send-chat-btn': () => window.goGame?.sendChatMessage(),
+        'offer-draw': () => {
+            if (window.goGame?.isNetworkGame) {
+                alert('Предложение ничьей пока не реализовано');
+            }
+        },
+        'resign-btn': () => {
+            if (window.goGame?.isNetworkGame) {
+                if (confirm('Вы уверены, что хотите сдаться?')) {
+                    window.goGame?.networkManager?.sendResign();
+                    window.goGame?.hideNetworkPanel();
+                }
+            } else {
+                window.goGame?.resign();
+            }
+        }
     };
 
     Object.keys(buttonHandlers).forEach(id => {

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Chess & Go – Выбор сервера</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .servers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .server-card {
+            background: rgba(15, 25, 45, 0.85);
+            backdrop-filter: blur(6px);
+            border-radius: 1rem;
+            border: 1px solid #2a3a4a;
+            padding: 1.5rem;
+            transition: border-color 0.2s;
+        }
+
+        .server-card:hover {
+            border-color: #4a6a8a;
+        }
+
+        .server-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .server-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #c9e9ff;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .server-url {
+            font-size: 0.8rem;
+            color: #7a8eaa;
+            word-break: break-all;
+            margin-bottom: 1rem;
+        }
+
+        .server-stats {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            color: #9bb4d0;
+        }
+
+        .server-stat {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .server-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .auth-panel {
+            background: #0e1622;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .auth-panel.active {
+            display: block;
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1rem;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #2c3e4e;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 0.5rem;
+            background: #1e2a36;
+            border: none;
+            color: #9bb4d0;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+
+        .auth-tab.active {
+            background: #4cc9f0;
+            color: #0a192f;
+        }
+
+        .auth-status {
+            margin-top: 0.8rem;
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        .auth-status.success {
+            display: block;
+            background: rgba(76, 201, 240, 0.15);
+            border: 1px solid #4cc9f0;
+            color: #4cc9f0;
+        }
+
+        .auth-status.error {
+            display: block;
+            background: rgba(240, 84, 84, 0.15);
+            border: 1px solid #f05454;
+            color: #f05454;
+        }
+
+        .add-server-panel {
+            background: rgba(15, 25, 45, 0.85);
+            backdrop-filter: blur(6px);
+            border-radius: 1rem;
+            border: 1px dashed #2a3a4a;
+            padding: 1.5rem;
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+
+        .add-server-form {
+            display: none;
+            margin-top: 1rem;
+            text-align: left;
+        }
+
+        .add-server-form.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Выбор сервера</h1>
+            <div class="header-actions">
+                <a href="index.html" class="back-btn">← На главную</a>
+            </div>
+        </div>
+
+        <div class="servers-grid" id="servers-grid">
+            <!-- Server cards rendered by JS -->
+        </div>
+
+        <div class="add-server-panel">
+            <button id="add-server-btn" class="btn btn-secondary">+ Добавить сервер</button>
+            <div class="add-server-form" id="add-server-form">
+                <div class="input-group">
+                    <label for="new-server-name">Название</label>
+                    <input type="text" id="new-server-name" placeholder="Мой сервер">
+                </div>
+                <div class="input-group">
+                    <label for="new-server-url">Адрес (ws:// или wss://)</label>
+                    <input type="text" id="new-server-url" placeholder="ws://localhost:10000">
+                </div>
+                <div class="btn-group">
+                    <button id="confirm-add-server" class="btn btn-primary btn-sm">Добавить</button>
+                    <button id="cancel-add-server" class="btn btn-secondary btn-sm">Отмена</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="servers.js"></script>
+</body>
+</html>

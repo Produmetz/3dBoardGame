@@ -81,6 +81,8 @@ class Game {
 
         if (!cellCoords) return;
 
+        if (this.networkManager && this.networkManager.isSpectator) return;
+
         const { i, j, k } = cellCoords;
         const figure = ChessEngine.Pole[i][j][k];
 
@@ -237,12 +239,18 @@ class Game {
                 break;
             case 'CheckMateWhite':
                 document.getElementById('game-status').textContent = 'Мат белым! Игра окончена.';
+                if (this.isNetworkGame) {
+                    this.networkManager.sendGameOver('Black');
+                }
                 break;
             case 'CheckBlack':
                 document.getElementById('game-status').textContent = 'Шах черным!';
                 break;
             case 'CheckMateBlack':
                 document.getElementById('game-status').textContent = 'Мат черным! Игра окончена.';
+                if (this.isNetworkGame) {
+                    this.networkManager.sendGameOver('White');
+                }
                 break;
             default:
                 document.getElementById('game-status').textContent = '';
@@ -505,6 +513,10 @@ class Game {
         this.isMyTurn = isMyTurn;
     }
 
+    setBoardParams(x, y, z, komi) {
+        // Chess uses fixed 6x6x8 board, params ignored
+    }
+
     refreshRooms() {
         this.networkManager.requestRoomList();
     }
@@ -517,19 +529,9 @@ class Game {
         this.networkManager.createRoom(name, pwd || null, isPublic, 'chess'); // gameType = 'chess'
     }
 
-    cancelCreateRoom() {
-        document.getElementById('create-room-panel').style.display = 'none';
-    }
-
-    confirmJoinRoom() {
-        const pwd = document.getElementById('join-room-password').value;
-        this.networkManager.joinRoom(this.selectedRoomId, pwd || null);
-        document.getElementById('join-room-panel').style.display = 'none';
-    }
-
-    cancelJoinRoom() {
-        document.getElementById('join-room-panel').style.display = 'none';
-    }
+    cancelCreateRoom() {}
+    confirmJoinRoom() {}
+    cancelJoinRoom() {}
 
     leaveRoom() {
         this.networkManager.leaveRoom();
@@ -550,7 +552,8 @@ class Game {
 
     // Методы для обновления UI
     updateNetworkStatus(status) {
-        document.getElementById('network-status').textContent = status;
+        const el = document.getElementById('network-status');
+        if (el) el.textContent = status;
     }
 
     updateRoomId(roomId) {
@@ -625,6 +628,76 @@ class Game {
         }
     }
 
+    handleGameOver(data) {
+        const panel = document.getElementById('game-result-panel');
+        const textEl = document.getElementById('game-result-text');
+        const reasonEl = document.getElementById('game-result-reason');
+        const modeEl = document.getElementById('game-result-mode');
+
+        let resultText = '';
+        if (data.result === 'draw') {
+            resultText = 'Ничья';
+        } else if (data.winner) {
+            const myName = this.networkManager.playerName;
+            resultText = data.winner === myName ? 'Победа!' : 'Поражение';
+        } else {
+            resultText = 'Игра окончена';
+        }
+
+        textEl.textContent = resultText;
+        reasonEl.textContent = data.reason || '';
+
+        let modeText = data.gameMode === 'rated' ? 'Рейтинговая игра' :
+                       data.gameMode === 'unranked' ? 'Без рейтинга' : '';
+        if (data.ratingChanges && Object.keys(data.ratingChanges).length > 0) {
+            const myName = this.networkManager.playerName;
+            const myDelta = data.ratingChanges[myName];
+            if (myDelta !== undefined) {
+                const sign = myDelta > 0 ? '+' : '';
+                modeText += ` (${sign}${myDelta} рейтинга)`;
+            }
+        }
+        modeEl.textContent = modeText;
+
+        panel.style.display = 'block';
+    }
+
+    handleDrawOffer(data) {
+        const accepted = confirm(`${data.from} предлагает ничью. Принять?`);
+        this.networkManager.sendDrawResponse(accepted);
+    }
+
+    handleDrawResponse(data) {
+        if (!data.accepted) {
+            alert(`${data.from} отклонил предложение ничьей.`);
+        }
+    }
+
+    handleRematchOffer(data) {
+        const accepted = confirm(`${data.from} предлагает реванш. Принять?`);
+        this.networkManager.sendRematchResponse(accepted);
+    }
+
+    handleRematchResponse(data) {
+        if (!data.accepted) {
+            alert(`${data.from} отклонил предложение реванша.`);
+            document.getElementById('rematch-status').style.display = 'none';
+        }
+    }
+
+    handleRematchStart(data) {
+        document.getElementById('game-result-panel').style.display = 'none';
+        this.networkManager.playerColor = data.color;
+        this.currentPlayer = 'White';
+        this.moveHistory = [];
+        this.isNetworkMove = false;
+        this.isMyTurn = data.isMyTurn;
+
+        ChessEngine.InitGame();
+        createAndFillBoardOnPole(ChessEngine.Pole);
+        this.updateUI();
+    }
+
     changeColor(type, value) {
         console.log('Изменение цвета:', type, value);
         const colors = GraphicsEngine.getColors();
@@ -654,50 +727,42 @@ class Game {
         GraphicsEngine.updateColors(colors);
     }
 
-    showNetworkConnect() {
-        document.getElementById('network-connect').style.display = 'block';
-        document.getElementById('network-rooms').style.display = 'none';
-        document.getElementById('network-inroom').style.display = 'none';
+    showRoomInfo(serverAddress, roomId, roomName, gameType, myName, myColor, myRating) {
+        const panel = document.getElementById('network-panel');
+        panel.style.display = 'block';
+        document.getElementById('net-server-address').textContent = serverAddress;
+        document.getElementById('net-room-id').textContent = roomId;
+        document.getElementById('net-room-name').textContent = roomName || roomId;
+        document.getElementById('net-game-type').textContent = gameType === 'chess' ? 'Шахматы' : 'Го';
+        document.getElementById('net-my-name').textContent = myName;
+        document.getElementById('net-my-color').textContent = myColor;
+        document.getElementById('net-my-rating').textContent = myRating || '—';
+        document.getElementById('net-opponent-name').textContent = 'Ожидание...';
+        document.getElementById('net-opponent-info').style.display = 'none';
+        document.getElementById('net-opponent-name').style.display = 'inline';
     }
 
-    showRoomList() {
-        document.getElementById('network-connect').style.display = 'none';
-        document.getElementById('network-rooms').style.display = 'block';
-        document.getElementById('network-inroom').style.display = 'none';
-        this.networkManager.requestRoomList();
+    updateOpponentInfo(name, color, rating) {
+        document.getElementById('net-opponent-name').style.display = 'none';
+        document.getElementById('net-opponent-info').style.display = 'inline';
+        document.getElementById('net-opponent-name').textContent = name;
+        document.getElementById('net-opponent-color').textContent = color;
+        document.getElementById('net-opponent-rating').textContent = rating || '—';
+    }
+
+    hideNetworkPanel() {
+        document.getElementById('network-panel').style.display = 'none';
     }
 
     switchToInRoom() {
-        document.getElementById('network-connect').style.display = 'none';
-        document.getElementById('network-rooms').style.display = 'none';
-        document.getElementById('network-inroom').style.display = 'block';
+        // Compatibility - show network panel
+        document.getElementById('network-panel').style.display = 'block';
     }
 
-    displayRooms(rooms) {
-        const listDiv = document.getElementById('rooms-list');
-        listDiv.innerHTML = '';
-        if (!rooms.length) {
-            listDiv.innerHTML = '<p>Нет доступных комнат</p>';
-            return;
-        }
-        rooms.forEach(room => {
-            const roomDiv = document.createElement('div');
-            roomDiv.style.cursor = 'pointer';
-            roomDiv.style.padding = '5px';
-            roomDiv.style.borderBottom = '1px solid #4cc9f0';
-            roomDiv.innerHTML = `${room.name} (${room.playersCount}/2) ${room.hasPassword ? '🔒' : ''} ${room.isPublic ? '🌍' : '🔐'}`;
-            roomDiv.onclick = () => this.selectRoom(room);
-            listDiv.appendChild(roomDiv);
-        });
-    }
-
-    selectRoom(room) {
-        document.getElementById('selected-room-name').textContent = room.name;
-        document.getElementById('join-room-panel').style.display = 'block';
-        document.getElementById('join-room-password').value = '';
-        this.selectedRoomId = room.id;
-        this.selectedRoomHasPassword = room.hasPassword;
-    }
+    showRoomList() {}
+    showNetworkConnect() {}
+    displayRooms() {}
+    selectRoom() {}
 }
 
 // Инициализация игры при загрузке страницы
