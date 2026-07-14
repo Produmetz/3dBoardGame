@@ -17,18 +17,21 @@ class NetworkManager {
     checkLobbyRedirect() {
         const params = new URLSearchParams(window.location.search);
         if (params.get('network') === 'true') {
-            // Поддержка нового формата (serverIndex) и старого (server URL)
-            let server = params.get('server') || params.get('serverUrl') || 'wss://threedboardgames.onrender.com';
-            const serverIndex = params.get('serverIndex');
+            let server = params.get('server') || '';
 
-            // Если указан serverIndex, получаем URL из localStorage
-            if (serverIndex !== null) {
+            // Если server — это число (индекс), получаем URL из localStorage
+            if (server && !isNaN(parseInt(server))) {
                 try {
                     const servers = JSON.parse(localStorage.getItem('lobby_servers') || '[]');
-                    if (servers[parseInt(serverIndex)]) {
-                        server = servers[parseInt(serverIndex)].url;
+                    if (servers[parseInt(server)]) {
+                        server = servers[parseInt(server)].url;
                     }
                 } catch(e) {}
+            }
+
+            // Если server пустой или невалидный — используем дефолт
+            if (!server || (!server.startsWith('ws://') && !server.startsWith('wss://'))) {
+                server = 'wss://threedboardgames.onrender.com';
             }
 
             const token = params.get('token') || '';
