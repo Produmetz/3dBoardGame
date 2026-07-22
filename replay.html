@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Chess & Go – Replay</title>
     <link rel="stylesheet" href="lobby-styles.css">
+    <link rel="stylesheet" href="nav.css">
     <style>
         body {
             overflow-y: auto;
@@ -117,9 +118,6 @@
     <div class="container">
         <div class="header">
             <h1>Просмотр игры</h1>
-            <div class="header-actions">
-                <a href="lobby.html" class="back-btn">← Лобби</a>
-            </div>
         </div>
 
         <div class="main-grid" style="grid-template-columns: 1fr;">
@@ -474,5 +472,7 @@
         window.replay = new ReplayPlayer();
     });
     </script>
+    <script src="nav.js"></script>
+    <script>Nav.init('replay');</script>
 </body>
 </html>

@@ -537,6 +537,10 @@ class Game {
         this.networkManager.leaveRoom();
     }
 
+    goBack() {
+        this.networkManager.goBack();
+    }
+
     offerUndo() {
         this.networkManager.sendUndoRequest();
     }

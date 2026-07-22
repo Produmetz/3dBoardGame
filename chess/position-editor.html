@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Генератор шахматных позиций</title>
+    <link rel="stylesheet" href="../nav.css">
     <style>
         * {
             box-sizing: border-box;
@@ -340,7 +341,7 @@
 <body>
     <!-- Верхняя плашка -->
     <header class="header">
-        <button class="back-btn" onclick="window.location.href='3dChess_1.html'">
+        <button class="back-btn" onclick="window.location.href='chess.html'">
             ← Вернуться в игру
         </button>
         <div class="header-text">
@@ -423,6 +424,8 @@
     <script src="chess-engine.js"></script>
     <script src="graphics.js"></script>
     <script src="position-editor.js"></script>
+    <script src="../nav.js"></script>
+    <script>Nav.init('position-editor');</script>
 </body>
 
 </html>

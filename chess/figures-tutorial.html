@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Шахматы - Упрощенный интерфейс</title>
+    <title>3D Шахматы - Обучение</title>
+    <link rel="stylesheet" href="../nav.css">
     <style>
         /* Существующие стили остаются без изменений */
         body {
@@ -444,6 +445,8 @@
     <script src="game.js"></script>
     <script src="network.js"></script>
     <script src="figures-tutorial.js"></script>
+    <script src="../nav.js"></script>
+    <script>Nav.init('figures-tutorial');</script>
 
     <!-- Упрощенный обработчик событий -->
     <script>
@@ -466,7 +469,7 @@
 
             // Обработчик для кнопки возврата в игру
             document.getElementById('return-to-game').addEventListener('click', function () {
-                window.location.href = 'index.html'; // Замените на нужный URL
+                window.location.href = 'chess.html';
             });
 
             // Обработчики для цветовых пикеров

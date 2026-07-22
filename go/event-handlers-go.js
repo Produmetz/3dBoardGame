@@ -48,6 +48,11 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 window.goGame?.resign();
             }
+        },
+        'local-resign-btn': () => {
+            if (confirm('Вы уверены, что хотите сдаться?')) {
+                window.goGame?.resign();
+            }
         }
     };
 

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Chess & Go – Выбор сервера</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="nav.css">
     <style>
         .servers-grid {
             display: grid;
@@ -153,9 +154,6 @@
     <div class="container">
         <div class="header">
             <h1>Выбор сервера</h1>
-            <div class="header-actions">
-                <a href="index.html" class="back-btn">← На главную</a>
-            </div>
         </div>
 
         <div class="servers-grid" id="servers-grid">
@@ -182,5 +180,7 @@
     </div>
 
     <script src="servers.js"></script>
+    <script src="nav.js"></script>
+    <script>Nav.init('servers');</script>
 </body>
 </html>

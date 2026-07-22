@@ -68,10 +68,11 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         },
         'back-to-lobby-btn': () => {
-            if (window.chessGame?.isNetworkGame) {
-                window.chessGame.networkManager.send({ type: 'leave_room' });
+            if (window.chessGame?.isNetworkGame && window.chessGame?.networkManager) {
+                window.chessGame.networkManager.goBack();
+            } else {
+                window.location.href = '../index.html';
             }
-            window.location.href = '../lobby.html';
         }
     };
 

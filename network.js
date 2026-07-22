@@ -44,12 +44,17 @@ class NetworkManager {
             this.playerName = playerName;
             this.isSpectator = (role === 'spectator');
             this.pendingRoomId = params.get('roomId');
+            this.pendingRoomCode = params.get('roomCode');
             this.pendingColor = params.get('color');
             this.pendingOpponent = params.get('opponentName');
             this.pendingRoomName = params.get('roomName');
 
             setTimeout(() => {
-                this.connectWithToken(server, playerName, token);
+                if (this.pendingRoomCode) {
+                    this.connectWithCode(server, playerName, token, this.pendingRoomCode);
+                } else {
+                    this.connectWithToken(server, playerName, token);
+                }
             }, 500);
 
             window.history.replaceState({}, '', window.location.pathname);
@@ -79,6 +84,54 @@ class NetworkManager {
             this.socket.onclose = () => {
                 this.connected = false;
                 // Если соединение закрылось и мы на странице игры — возвращаем в лобби
+                if (window.location.search.includes('network=true') || this.lobbyServerIndex) {
+                    const server = this.lobbyServerIndex || '0';
+                    const token = this.authToken || '';
+                    const playerName = this.playerName || '';
+                    window.location.href = `../lobby.html?server=${server}&token=${token}&nickname=${playerName}`;
+                } else {
+                    this.game.updateNetworkStatus('Отключено');
+                    this.game.showNetworkConnect();
+                }
+            };
+
+            this.socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                this.game.updateNetworkStatus('Ошибка подключения');
+            };
+        } catch (error) {
+            console.error('Connection error:', error);
+            alert('Ошибка подключения к серверу');
+        }
+    }
+
+    connectWithCode(address, playerName, token, roomCode) {
+        try {
+            const wsUrl = address.replace('0.0.0.0', 'localhost');
+            this.socket = new WebSocket(wsUrl);
+            this.playerName = playerName;
+            this.serverAddress = wsUrl;
+
+            this.socket.onopen = () => {
+                this.connected = true;
+                if (token) {
+                    this.send({ type: 'auth_join', token: token, playerName: playerName });
+                } else {
+                    this.send({ type: 'join', playerName: playerName });
+                }
+            };
+
+            this.socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'joined') {
+                    this.send({ type: 'join_by_code', code: roomCode });
+                } else {
+                    this.handleMessage(data);
+                }
+            };
+
+            this.socket.onclose = () => {
+                this.connected = false;
                 if (window.location.search.includes('network=true') || this.lobbyServerIndex) {
                     const server = this.lobbyServerIndex || '0';
                     const token = this.authToken || '';
@@ -275,6 +328,20 @@ class NetworkManager {
             roomId: roomId,
             password: password || null
         });
+    }
+
+    goBack() {
+        // Go back to lobby without leaving the room
+        // Player stays in room, can reconnect later via "My Rooms"
+        this.send({ type: 'go_back' });
+        this.roomId = null;
+        this.playerColor = null;
+        this.opponentName = null;
+
+        const server = this.lobbyServerIndex || '0';
+        const token = this.authToken || '';
+        const playerName = this.playerName || '';
+        window.location.href = `../lobby.html?server=${server}&token=${token}&nickname=${playerName}&stay=1`;
     }
 
     leaveRoom() {

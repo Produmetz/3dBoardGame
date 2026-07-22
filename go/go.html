@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="game-type" content="go">
-    <title>3D Кубики с Three.js</title>
+    <title>3D Го</title>
+    <link rel="stylesheet" href="../nav.css">
     <style>
         body {
             margin: 0;
@@ -422,10 +423,6 @@
 
 <body>
     <button id="toggle-panels" class="game-btn">☰</button>
-    <!-- Кнопка возврата в лобби (только для сетевой игры) -->
-    <div id="back-to-lobby" style="position: fixed; top: 20px; left: 20px; z-index: 50; display: none;">
-        <a href="../index.html" class="game-btn" style="background:#1e2a36; color:#9bb4d0; text-decoration: none;">← Назад</a>
-    </div>
     <!-- Левая панель с подсказками и историей ходов -->
     <div id="left-panel">
         <div class="buttons-row">
@@ -505,11 +502,11 @@
                 <div>Захвачено белых: <span id="captured-white">0</span></div>
                 <div id="score-display" style="margin-top:5px;"></div>
                 <div id="game-status" style="color: #ff5722; margin-top: 10px;"></div>
-            </div>x
+            </div>
         </div>
 
         <!-- Сетевая комната (скрыта по умолчанию, показывается при сетевой игре) -->
-        <div class="panel-section collapsed" id="network-panel" style="display:none;">
+        <div class="panel-section" id="network-panel" style="display:none;">
             <h3>Сетевая комната</h3>
             <div class="panel-content">
                 <div id="room-info-section">
@@ -563,6 +560,7 @@
                         <button id="cancel-undo" class="game-btn" style="margin-left:5px; padding:3px 8px;">✕</button>
                     </div>
                     <div class="buttons-row" style="margin-top:8px;">
+                        <button id="back-to-lobby-btn" class="game-btn">В лобби</button>
                         <button id="leave-room-btn" class="game-btn">Покинуть комнату</button>
                     </div>
                 </div>
@@ -640,7 +638,7 @@
                     <button id="undo-move" class="game-btn">Отменить ход</button>
                     <button id="position-editor" class="game-btn">Редактор позиций</button>
                     <button id="pass-btn" class="game-btn">Пас</button>
-                    <button id="resign-btn" class="game-btn">Сдаться</button>
+                    <button id="local-resign-btn" class="game-btn">Сдаться</button>
                 </div>
             </div>
         </div>
@@ -661,22 +659,8 @@
     <script src="event-handlers-go.js"></script>
 
     <!-- Скрипт для работы с панелями управления -->
-    <script>
-        // Показать кнопку возврата в лобби для сетевой игры
-        (function() {
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('network') === 'true') {
-                const backBtn = document.getElementById('back-to-lobby');
-                if (backBtn) {
-                    backBtn.style.display = 'block';
-                    const serverIndex = params.get('serverIndex') || '0';
-                    const token = params.get('token') || '';
-                    const nickname = params.get('playerName') || '';
-                    backBtn.querySelector('a').href = `../lobby.html?server=${serverIndex}&token=${token}&nickname=${nickname}`;
-                }
-            }
-        })();
-    </script>
+    <script src="../nav.js"></script>
+    <script>Nav.init('go');</script>
 </body>
 
 </html>

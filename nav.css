@@ -1,0 +1,151 @@
+/* === Navigation shared styles === */
+
+/* Breadcrumb bar */
+.nav-breadcrumb {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.5rem;
+    background: rgba(10, 15, 26, 0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid #2a3a4a;
+    font-size: 0.85rem;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.nav-breadcrumb a {
+    color: #9bb4d0;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.nav-breadcrumb a:hover {
+    color: #4cc9f0;
+}
+
+.nav-breadcrumb .nav-sep {
+    color: #4a5a6a;
+    user-select: none;
+}
+
+.nav-breadcrumb .nav-current {
+    color: #eef4ff;
+    font-weight: 500;
+}
+
+/* Back button */
+.nav-back-btn {
+    position: fixed;
+    top: 40px;
+    left: 20px;
+    z-index: 55;
+    background: #1e2a36;
+    border: 1px solid #2c3e4e;
+    color: #9bb4d0;
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    text-decoration: none;
+    transition: 0.2s;
+}
+
+body:not(.nav-has-breadcrumb) .nav-back-btn {
+    display: none;
+}
+
+.nav-back-btn:hover {
+    background: #2c4c6c;
+    color: white;
+}
+
+/* Mode indicator badge */
+.nav-mode-badge {
+    position: fixed;
+    top: 44px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 55;
+    padding: 0.25rem 1rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: none;
+    pointer-events: none;
+}
+
+.nav-mode-badge.mode-local {
+    display: block;
+    background: #1e2a36;
+    color: #9bb4d0;
+    border: 1px solid #2c3e4e;
+}
+
+.nav-mode-badge.mode-online {
+    display: block;
+    background: rgba(76, 201, 240, 0.15);
+    color: #4cc9f0;
+    border: 1px solid rgba(76, 201, 240, 0.3);
+    animation: nav-pulse 3s ease-in-out infinite;
+}
+
+.nav-mode-badge.mode-spectator {
+    display: block;
+    background: rgba(255, 152, 0, 0.15);
+    color: #ffb74d;
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+@keyframes nav-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Adjust game pages for nav bar */
+body.nav-has-breadcrumb {
+    padding-top: 36px;
+}
+
+/* For non-game pages (index, servers, lobby) — just add top padding */
+body.nav-has-breadcrumb:not(.nav-game-page) {
+    padding-top: 0;
+}
+
+/* Game page specific adjustments */
+body.nav-game-page {
+    padding-top: 0;
+}
+
+body.nav-game-page .nav-mode-badge {
+    top: 44px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .nav-breadcrumb {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+
+    .nav-back-btn {
+        top: 36px;
+        left: 10px;
+        padding: 0.3rem 0.7rem;
+        font-size: 0.8rem;
+    }
+
+    .nav-mode-badge {
+        top: 38px;
+        font-size: 0.7rem;
+        padding: 0.2rem 0.8rem;
+    }
+}

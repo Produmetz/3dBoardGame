@@ -166,10 +166,6 @@ class GoGame {
     pass() {
         if (!this.isMyTurn) return;
         const currentPlayer = this.board.getCurrentPlayer();
-        if (this.isNetworkGame && !this.isNetworkMove) {
-            this.setMyTurn(false);
-            this.networkManager.sendPass();
-        }
         const success = this.board.pass();
         if (success) {
             this.moveHistory.push({ type: 'pass', color: currentPlayer === GoEngine.Stone.BLACK ? 'Black' : 'White' });
@@ -191,17 +187,13 @@ class GoGame {
     resign() {
         if (!this.isMyTurn) return;
         const currentPlayer = this.board.getCurrentPlayer();
-        if (this.isNetworkGame && !this.isNetworkMove) {
-            this.networkManager.sendResign();
-        }
         const success = this.board.resign();
         if (success) {
             const winner = currentPlayer === GoEngine.Stone.BLACK ? 'Белые' : 'Чёрные';
-
-            alert(`Игра окончена. Победитель: ${winner} (сдача)`);
             if (this.isNetworkGame && !this.isNetworkMove) {
                 this.networkManager.sendResign();
             }
+            alert(`Игра окончена. Победитель: ${winner} (сдача)`);
             this.updateUI();
         }
     }
@@ -319,6 +311,10 @@ class GoGame {
         this.networkManager.leaveRoom();
     }
 
+    goBack() {
+        this.networkManager.goBack();
+    }
+
     offerUndo() {
         if (!this.isNetworkGame) return;
         this.networkManager.sendUndoRequest();
@@ -381,6 +377,81 @@ class GoGame {
         this.board.resigned = true;
         this.setMyTurn(false);
         this.updateUI();
+    }
+
+    handleGameOver(data) {
+        this.board.gameOver = true;
+        this.setMyTurn(false);
+        const result = data.result || 'win';
+        const winner = data.winner;
+        const reason = data.reason || '';
+
+        let message = 'Игра окончена.';
+        if (result === 'draw') {
+            message += ' Ничья.';
+        } else if (winner) {
+            const isWinner = winner === this.playerColor;
+            message += isWinner ? ' Вы победили!' : ' Вы проиграли.';
+        }
+        if (reason) message += ` (${reason})`;
+
+        // Show game result panel
+        const panel = document.getElementById('game-result-panel');
+        if (panel) {
+            document.getElementById('game-result-text').textContent = message;
+            document.getElementById('game-result-reason').textContent = reason;
+            document.getElementById('game-result-mode').textContent = data.gameMode === 'rated' ? 'Рейтинговая' : 'Без рейтинга';
+            panel.style.display = 'block';
+        } else {
+            alert(message);
+        }
+        this.updateUI();
+    }
+
+    handleDrawOffer(data) {
+        const accepted = confirm(`Игрок ${data.from} предлагает ничью. Принять?`);
+        this.networkManager.sendDrawResponse(accepted);
+    }
+
+    handleDrawResponse(data) {
+        if (data.accepted) {
+            alert('Ничья принята!');
+            this.board.gameOver = true;
+            this.setMyTurn(false);
+            this.updateUI();
+        } else {
+            alert('Предложение ничьей отклонено.');
+        }
+    }
+
+    handleRematchOffer(data) {
+        const accepted = confirm(`Игрок ${data.from} предлагает реванш. Принять?`);
+        this.networkManager.sendRematchResponse(accepted);
+    }
+
+    handleRematchResponse(data) {
+        if (data.accepted) {
+            document.getElementById('rematch-status').textContent = 'Реванш принят! Новая игра начинается...';
+        } else {
+            document.getElementById('rematch-status').textContent = 'Реванш отклонён.';
+            setTimeout(() => {
+                document.getElementById('rematch-status').style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    handleRematchStart(data) {
+        this.board = new GoEngine.Board(
+            [data.boardX || 5, data.boardY || 5, data.boardZ || 5],
+            data.komi || 6.5
+        );
+        this.moveHistory = [];
+        this.playerColor = data.color;
+        this.setMyTurn(data.isMyTurn);
+        GraphicsEngine.createAndFillBoardForGo(this.board);
+        this.updateUI();
+        document.getElementById('game-result-panel').style.display = 'none';
+        document.getElementById('rematch-status').style.display = 'none';
     }
 
     // Новый метод для обработки нажатия на кнопку "Отменить ход"
