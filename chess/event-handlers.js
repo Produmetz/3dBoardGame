@@ -120,6 +120,25 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('open-tutorial')?.addEventListener('click', function () {
         window.location.href = 'figures-tutorial.html';
     });
+
+    // Управление локальным ботом
+    const botEnabled = document.getElementById('bot-enabled');
+    const botColor = document.getElementById('bot-color');
+    const botDepth = document.getElementById('bot-depth');
+    const botDepthValue = document.getElementById('bot-depth-value');
+
+    botEnabled?.addEventListener('change', function () {
+        window.chessGame?.setBotEnabled(this.checked);
+    });
+
+    botColor?.addEventListener('change', function () {
+        window.chessGame?.setBotColor(this.value);
+    });
+
+    botDepth?.addEventListener('input', function () {
+        if (botDepthValue) botDepthValue.textContent = this.value;
+        window.chessGame?.setBotDepth(this.value);
+    });
 });
 
 // Обработчик для контекстного меню (правой кнопки мыши)

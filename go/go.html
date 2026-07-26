@@ -640,6 +640,39 @@
                     <button id="pass-btn" class="game-btn">Пас</button>
                     <button id="local-resign-btn" class="game-btn">Сдаться</button>
                 </div>
+
+                <div id="go-bot-controls" style="margin-top: 15px; padding-top: 12px; border-top: 1px solid #4cc9f0;">
+                    <h4>Бот (локально)</h4>
+                    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9em;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="go-bot-enabled">
+                            Включить бота
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            Сторона:
+                            <select id="go-bot-color" class="game-btn" style="width: auto; padding: 4px 8px;">
+                                <option value="White" selected>Белые</option>
+                                <option value="Black">Чёрные</option>
+                            </select>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            Алгоритм:
+                            <select id="go-bot-algorithm" class="game-btn" style="width: auto; padding: 4px 8px;">
+                                <option value="greedy">Жадный</option>
+                                <option value="search" selected>Поиск (1–2)</option>
+                                <option value="mcts">MCTS</option>
+                            </select>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            Сила:
+                            <input type="range" id="go-bot-strength" min="1" max="5" value="3" style="flex: 1;">
+                            <span id="go-bot-strength-value">3</span>
+                        </label>
+                        <div id="go-bot-strength-hint" style="color: #7a8eaa; font-size: 0.8em;">Сила: глубина 2 + шире beam</div>
+                        <div id="go-bot-status" style="color: #9bb4d0; min-height: 1.2em;"></div>
+                        <div style="color: #7a8eaa; font-size: 0.8em;">Жадный — мгновенно; Поиск — быстро; MCTS — сильнее, думает в Worker.</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -653,6 +686,8 @@
 
     <!-- Подключаем ваш скрипт -->
     <script src="go-engine_v2.js"></script>
+    <script src="go-bot-core.js"></script>
+    <script src="go-bot.js"></script>
     <script src="graphics-go.js"></script>
     <script src="../network.js"></script>
     <script src="game-go.js"></script>

@@ -15,6 +15,13 @@ class Game {
         this.isMyTurn = true;
         this.selectedRoomId = null;
 
+        // Локальный бот
+        this.botEnabled = false;
+        this.botColor = 'Black';
+        this.botDepth = 2;
+        this.botThinking = false;
+        this._botMoveToken = 0;
+
         this.init();
     }
 
@@ -36,6 +43,7 @@ class Game {
     }
 
     resetToStandart() {
+        this.cancelBotSearch();
         ChessEngine.InitGame();
         this.currentPlayer = 'White';
         this.moveHistory = [];
@@ -45,6 +53,7 @@ class Game {
         createAndFillBoardOnPole(ChessEngine.Pole);
         this.updateUI();
         console.log('Новая игра началась! Ходят ' + this.currentPlayer);
+        this.maybeBotMove();
     }
 
     setupEventListeners() {
@@ -83,6 +92,9 @@ class Game {
 
         if (this.networkManager && this.networkManager.isSpectator) return;
 
+        // Не даём человеку ходить за сторону бота / пока бот думает
+        if (this.isBotSideToMove() || this.botThinking) return;
+
         const { i, j, k } = cellCoords;
         const figure = ChessEngine.Pole[i][j][k];
 
@@ -114,6 +126,132 @@ class Game {
             GraphicsEngine.unHighlightingPossibleMoves();
             GraphicsEngine.unselectCell();
         }
+    }
+
+    isBotSideToMove() {
+        return !this.isNetworkGame && this.botEnabled && this.botColor === this.currentPlayer;
+    }
+
+    isGameOverByMate() {
+        const state = ChessEngine.FoundKing(ChessEngine.Pole);
+        return state === 'CheckMateWhite' || state === 'CheckMateBlack';
+    }
+
+    updateBotStatusUI() {
+        const statusEl = document.getElementById('bot-status');
+        if (!statusEl) return;
+        if (this.isNetworkGame || !this.botEnabled) {
+            statusEl.textContent = '';
+            return;
+        }
+        if (this.botThinking) {
+            statusEl.textContent = 'Бот думает…';
+        } else {
+            const side = this.botColor === 'White' ? 'белых' : 'чёрных';
+            statusEl.textContent = `Бот играет за ${side}`;
+        }
+    }
+
+    updateBotPanelVisibility() {
+        const panel = document.getElementById('bot-controls');
+        if (!panel) return;
+        panel.style.display = this.isNetworkGame ? 'none' : 'block';
+    }
+
+    cancelBotSearch() {
+        this._botMoveToken++;
+        this.botThinking = false;
+        if (typeof ChessBot !== 'undefined' && ChessBot.cancelSearch) {
+            ChessBot.cancelSearch();
+        }
+        this.updateBotStatusUI();
+    }
+
+    setBotEnabled(enabled) {
+        this.cancelBotSearch();
+        this.botEnabled = !!enabled;
+        this.updateBotStatusUI();
+        this.maybeBotMove();
+    }
+
+    setBotColor(color) {
+        if (color !== 'White' && color !== 'Black') return;
+        this.cancelBotSearch();
+        this.botColor = color;
+        this.updateBotStatusUI();
+        this.maybeBotMove();
+    }
+
+    setBotDepth(depth) {
+        this.botDepth = typeof ChessBot !== 'undefined'
+            ? ChessBot.setDepth(depth)
+            : Math.max(1, Math.min(5, parseInt(depth, 10) || 2));
+        const depthInput = document.getElementById('bot-depth');
+        if (depthInput) depthInput.value = String(this.botDepth);
+        const depthLabel = document.getElementById('bot-depth-value');
+        if (depthLabel) depthLabel.textContent = String(this.botDepth);
+    }
+
+    maybeBotMove() {
+        if (this.isNetworkGame || !this.botEnabled || this.botThinking) return;
+        if (!this.isBotSideToMove()) {
+            this.updateBotStatusUI();
+            return;
+        }
+        if (this.isGameOverByMate()) {
+            this.updateBotStatusUI();
+            return;
+        }
+        if (typeof ChessBot === 'undefined') return;
+
+        const token = ++this._botMoveToken;
+        this.botThinking = true;
+        this.updateBotStatusUI();
+
+        const color = this.botColor;
+        const depth = this.botDepth;
+        const poleSnapshot = ChessEngine.Pole;
+
+        const finish = (best) => {
+            if (token !== this._botMoveToken) return;
+            this.botThinking = false;
+            this.updateBotStatusUI();
+            if (!best) return;
+            if (!this.botEnabled || this.isNetworkGame || this.currentPlayer !== color) return;
+            this.makeMove(best.from.x, best.from.y, best.from.z, best.to.x, best.to.y, best.to.z);
+        };
+
+        // Дать UI отрисовать «Бот думает…», затем поиск в Worker
+        setTimeout(() => {
+            if (token !== this._botMoveToken) return;
+            if (!this.botEnabled || this.isNetworkGame || !this.isBotSideToMove()) {
+                this.botThinking = false;
+                this.updateBotStatusUI();
+                return;
+            }
+
+            const searchPromise = ChessBot.findBestMoveAsync
+                ? ChessBot.findBestMoveAsync(poleSnapshot, color, depth)
+                : Promise.resolve(ChessBot.findBestMove(poleSnapshot, color, depth));
+
+            searchPromise.then(finish).catch((err) => {
+                if (token !== this._botMoveToken) return;
+                // Если worker отменён — молча выходим; иначе fallback sync
+                if (err && /cancel/i.test(err.message || '')) {
+                    this.botThinking = false;
+                    this.updateBotStatusUI();
+                    return;
+                }
+                console.warn('Worker search failed, sync fallback:', err);
+                try {
+                    finish(ChessBot.findBestMove(ChessEngine.Pole, color, depth));
+                } catch (e2) {
+                    console.error('Ошибка хода бота:', e2);
+                    this.botThinking = false;
+                    this.updateBotStatusUI();
+                }
+            });
+        }, 20);
     }
 
     isPossibleMove(i, j, k) {
@@ -165,6 +303,7 @@ class Game {
             this.updateUI();
 
             console.log(`Ход выполнен. Теперь ходят: ${this.currentPlayer}`);
+            this.maybeBotMove();
         } else {
             console.log('Недопустимый ход:', moveResult.message);
         }
@@ -184,10 +323,13 @@ class Game {
         this.updateUI();
 
         console.log(`Ход пропущен. Теперь ходят: ${this.currentPlayer}`);
+        this.maybeBotMove();
     }
 
     undoMove() {
         if (this.moveHistory.length == 0) return;
+
+        this.cancelBotSearch();
 
         const lastMove = this.moveHistory.pop();
         const { from, to, movedFigure, capturedFigure } = lastMove;
@@ -213,6 +355,7 @@ class Game {
         this.updateUI();
 
         console.log('Ход отменен. Теперь ходят: ' + this.currentPlayer);
+        this.maybeBotMove();
     }
 
     checkGameState() {
@@ -270,6 +413,8 @@ class Game {
 
         // Обновляем историю ходов
         this.updateMoveHistory();
+        this.updateBotPanelVisibility();
+        this.updateBotStatusUI();
     }
 
     updateMoveHistory() {
@@ -477,6 +622,7 @@ class Game {
                 GraphicsEngine.createAndFillBoardOnPole(ChessEngine.Pole);
                 this.checkGameState();
                 this.updateUI();
+                this.maybeBotMove();
 
                 alert('Игра успешно загружена!');
             } catch (error) {
@@ -499,6 +645,8 @@ class Game {
 
         this.networkManager.connect(address, playerName);
         this.isNetworkGame = true;
+        this.cancelBotSearch();
+        this.updateBotPanelVisibility();
     }
 
     disconnect() {
@@ -507,6 +655,8 @@ class Game {
         this.setMyTurn(true);
         this.updateNetworkStatus('Не подключено');
         this.showNetworkConnect();
+        this.updateBotPanelVisibility();
+        this.maybeBotMove();
     }
 
     setMyTurn(isMyTurn) {
@@ -734,6 +884,9 @@ class Game {
     showRoomInfo(serverAddress, roomId, roomName, gameType, myName, myColor, myRating) {
         const panel = document.getElementById('network-panel');
         panel.style.display = 'block';
+        this.isNetworkGame = true;
+        this.cancelBotSearch();
+        this.updateBotPanelVisibility();
         document.getElementById('net-server-address').textContent = serverAddress;
         document.getElementById('net-room-id').textContent = roomId;
         document.getElementById('net-room-name').textContent = roomName || roomId;
@@ -756,6 +909,8 @@ class Game {
 
     hideNetworkPanel() {
         document.getElementById('network-panel').style.display = 'none';
+        this.isNetworkGame = false;
+        this.updateBotPanelVisibility();
     }
 
     switchToInRoom() {

@@ -12,6 +12,14 @@ class GoGame {
         this.isMyTurn = true;
         this.selectedRoomId = null;
 
+        // Локальный бот
+        this.botEnabled = false;
+        this.botColor = 'White'; // белые по умолчанию (чёрные ходят первые)
+        this.botAlgorithm = 'search';
+        this.botStrength = 3;
+        this.botThinking = false;
+        this._botMoveToken = 0;
+
         this.init();
     }
 
@@ -23,6 +31,7 @@ class GoGame {
     }
 
     resetGame() {
+        this.cancelBotSearch();
         // Получаем размеры из UI
         const sizeX = parseInt(document.getElementById('go-size-x').value) || 5;
         const sizeY = parseInt(document.getElementById('go-size-y').value) || 5;
@@ -40,6 +49,7 @@ class GoGame {
         GraphicsEngine.createAndFillBoardForGo(this.board);
         this.updateUI();
         console.log('Новая игра Го началась! Ходят чёрные');
+        this.maybeBotMove();
     }
 
     setupEventListeners() {
@@ -104,6 +114,7 @@ class GoGame {
         if (!cellCoords) return;
 
         if (this.networkManager && this.networkManager.isSpectator) return;
+        if (this.isBotSideToMove() || this.botThinking) return;
 
         const { i, j, k } = cellCoords;
         const idx = this.board.coordToIndex([i, j, k]);
@@ -121,6 +132,166 @@ class GoGame {
                 setTimeout(() => GraphicsEngine.unselectCell(), 300);
             }
         }
+    }
+
+    botStone() {
+        return this.botColor === 'Black' ? GoEngine.Stone.BLACK : GoEngine.Stone.WHITE;
+    }
+
+    isBotSideToMove() {
+        if (this.isNetworkGame || !this.botEnabled || !this.board) return false;
+        return this.board.getCurrentPlayer() === this.botStone();
+    }
+
+    cancelBotSearch() {
+        this._botMoveToken++;
+        this.botThinking = false;
+        if (typeof GoBot !== 'undefined' && GoBot.cancelSearch) {
+            GoBot.cancelSearch();
+        }
+        this.updateBotStatusUI();
+    }
+
+    updateBotStatusUI() {
+        const statusEl = document.getElementById('go-bot-status');
+        if (!statusEl) return;
+        if (this.isNetworkGame || !this.botEnabled) {
+            statusEl.textContent = '';
+            return;
+        }
+        if (this.botThinking) {
+            const names = { greedy: 'жадный', search: 'поиск', mcts: 'MCTS' };
+            statusEl.textContent = `Бот думает (${names[this.botAlgorithm] || this.botAlgorithm})…`;
+        } else {
+            const side = this.botColor === 'Black' ? 'чёрных' : 'белых';
+            statusEl.textContent = `Бот за ${side}`;
+        }
+    }
+
+    updateBotPanelVisibility() {
+        const panel = document.getElementById('go-bot-controls');
+        if (!panel) return;
+        panel.style.display = this.isNetworkGame ? 'none' : 'block';
+    }
+
+    setBotEnabled(enabled) {
+        this.cancelBotSearch();
+        this.botEnabled = !!enabled;
+        this.updateBotStatusUI();
+        this.maybeBotMove();
+    }
+
+    setBotColor(color) {
+        if (color !== 'Black' && color !== 'White') return;
+        this.cancelBotSearch();
+        this.botColor = color;
+        this.updateBotStatusUI();
+        this.maybeBotMove();
+    }
+
+    setBotAlgorithm(algo) {
+        if (!['greedy', 'search', 'mcts'].includes(algo)) return;
+        this.cancelBotSearch();
+        this.botAlgorithm = algo;
+        this.updateBotStrengthHint();
+        this.updateBotStatusUI();
+        this.maybeBotMove();
+    }
+
+    setBotStrength(strength) {
+        this.botStrength = typeof GoBot !== 'undefined'
+            ? GoBot.clampStrength(strength)
+            : Math.max(1, Math.min(5, parseInt(strength, 10) || 3));
+        const input = document.getElementById('go-bot-strength');
+        if (input) input.value = String(this.botStrength);
+        const label = document.getElementById('go-bot-strength-value');
+        if (label) label.textContent = String(this.botStrength);
+        this.updateBotStrengthHint();
+    }
+
+    updateBotStrengthHint() {
+        const hint = document.getElementById('go-bot-strength-hint');
+        if (!hint) return;
+        const s = this.botStrength;
+        if (this.botAlgorithm === 'greedy') {
+            hint.textContent = 'Сила: меньше шума в выборе хода';
+        } else if (this.botAlgorithm === 'mcts') {
+            hint.textContent = `Сила ≈ ${20 + this.botStrength * this.botStrength * 20} симуляций MCTS`;
+        } else {
+            hint.textContent = s <= 2 ? 'Сила: глубина 1' : 'Сила: глубина 2 + шире beam';
+        }
+    }
+
+    maybeBotMove() {
+        if (this.isNetworkGame || !this.botEnabled || this.botThinking) return;
+        if (!this.board || this.board.isGameOver()) {
+            this.updateBotStatusUI();
+            return;
+        }
+        if (!this.isBotSideToMove()) {
+            this.updateBotStatusUI();
+            return;
+        }
+        if (typeof GoBot === 'undefined') return;
+
+        const token = ++this._botMoveToken;
+        this.botThinking = true;
+        this.updateBotStatusUI();
+
+        const options = {
+            algorithm: this.botAlgorithm,
+            strength: this.botStrength
+        };
+
+        setTimeout(() => {
+            if (token !== this._botMoveToken) return;
+            if (!this.botEnabled || this.isNetworkGame || !this.isBotSideToMove()) {
+                this.botThinking = false;
+                this.updateBotStatusUI();
+                return;
+            }
+
+            const searchPromise = GoBot.findBestMoveAsync
+                ? GoBot.findBestMoveAsync(this.board, options)
+                : Promise.resolve(GoBot.findBestMove(this.board, options));
+
+            searchPromise.then((best) => {
+                if (token !== this._botMoveToken) return;
+                this.botThinking = false;
+                this.updateBotStatusUI();
+                if (!best || !this.botEnabled || this.isNetworkGame) return;
+                if (!this.isBotSideToMove()) return;
+
+                if (best.type === 'pass') {
+                    this.pass(true);
+                } else {
+                    const x = best.x !== undefined ? best.x : best.coord[0];
+                    const y = best.y !== undefined ? best.y : best.coord[1];
+                    const z = best.z !== undefined ? best.z : best.coord[2];
+                    this.makeMove(x, y, z);
+                }
+            }).catch((err) => {
+                if (token !== this._botMoveToken) return;
+                if (err && /cancel/i.test(err.message || '')) {
+                    this.botThinking = false;
+                    this.updateBotStatusUI();
+                    return;
+                }
+                console.warn('Go bot worker failed, sync fallback:', err);
+                try {
+                    const best = GoBot.findBestMove(this.board, options);
+                    this.botThinking = false;
+                    this.updateBotStatusUI();
+                    if (!best || !this.isBotSideToMove()) return;
+                    if (best.type === 'pass') this.pass(true);
+                    else this.makeMove(best.x ?? best.coord[0], best.y ?? best.coord[1], best.z ?? best.coord[2]);
+                } catch (e2) {
+                    console.error('Ошибка хода бота Го:', e2);
+                    this.botThinking = false;
+                    this.updateBotStatusUI();
+                }
+            });
+        }, 20);
     }
 
     makeMove(x, y, z) {
@@ -144,6 +315,7 @@ class GoGame {
 
             this.checkGameState();
             this.updateUI();
+            this.maybeBotMove();
         } else {
             console.log('Ошибка выполнения хода');
         }
@@ -153,18 +325,24 @@ class GoGame {
         if (this.isNetworkGame) {
             this.offerUndo(); // отправляем предложение об отмене
         } else {
+            this.cancelBotSearch();
             if (this.board.undo()) {
                 GraphicsEngine.createAndFillBoardForGo(this.board);
                 this.updateUI();
                 GraphicsEngine.unselectCell();
+                this.maybeBotMove();
             } else {
                 alert('Невозможно отменить ход');
             }
         }
     }
 
-    pass() {
-        if (!this.isMyTurn) return;
+    pass(fromBot = false) {
+        if (!this.board || this.board.isGameOver()) return;
+        if (this.isNetworkGame && !this.isMyTurn) return;
+        if (this.botThinking && !fromBot) return;
+        if (!this.isNetworkGame && this.botEnabled && this.isBotSideToMove() && !fromBot) return;
+
         const currentPlayer = this.board.getCurrentPlayer();
         const success = this.board.pass();
         if (success) {
@@ -180,6 +358,8 @@ class GoGame {
             if (this.board.isGameOver()) {
                 const score = this.board.computeScore();
                 alert(`Игра окончена. Счёт: чёрные ${score.black}, белые ${score.white}`);
+            } else {
+                this.maybeBotMove();
             }
         }
     }
@@ -234,6 +414,8 @@ class GoGame {
         }
 
         this.updateMoveHistory();
+        this.updateBotPanelVisibility();
+        this.updateBotStatusUI();
     }
 
     updateMoveHistory() {
@@ -263,6 +445,8 @@ class GoGame {
         }
         this.networkManager.connect(address, playerName);
         this.isNetworkGame = true;
+        this.cancelBotSearch();
+        this.updateBotPanelVisibility();
     }
 
     disconnect() {
@@ -271,6 +455,8 @@ class GoGame {
         this.setMyTurn(true);
         this.updateNetworkStatus('Не подключено');
         this.showNetworkConnect();
+        this.updateBotPanelVisibility();
+        this.maybeBotMove();
     }
 
     setMyTurn(isMyTurn) {
@@ -512,6 +698,9 @@ class GoGame {
     showRoomInfo(serverAddress, roomId, roomName, gameType, myName, myColor, myRating) {
         const panel = document.getElementById('network-panel');
         panel.style.display = 'block';
+        this.isNetworkGame = true;
+        this.cancelBotSearch();
+        this.updateBotPanelVisibility();
         document.getElementById('net-server-address').textContent = serverAddress;
         document.getElementById('net-room-id').textContent = roomId;
         document.getElementById('net-room-name').textContent = roomName || roomId;
@@ -534,6 +723,8 @@ class GoGame {
 
     hideNetworkPanel() {
         document.getElementById('network-panel').style.display = 'none';
+        this.isNetworkGame = false;
+        this.updateBotPanelVisibility();
     }
 
     switchToInRoom() {
@@ -682,6 +873,7 @@ class GoGame {
                 GraphicsEngine.createAndFillBoardForGo(this.board);
                 this.updateUI();
                 this.checkGameState();
+                this.maybeBotMove();
 
                 // Сообщаем о результате загрузки
                 if (this.board.gameOver) {

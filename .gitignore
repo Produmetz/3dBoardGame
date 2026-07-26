@@ -14,29 +14,12 @@
 !servers.html
 !servers.js
 !replay.html
-!server.py
-!requirements.txt
 !package.json
 
 # Chess
 !chess/
 !chess/*
-!chess/chess.html
-!chess/chess-engine.js
-!chess/event-handlers.js
-!chess/game.js
-!chess/graphics.js
-!chess/examples-list.json
-!chess/figures-tutorial.html
-!chess/figures-tutorial.js
-!chess/position-editor.html
-!chess/position-editor.js
 
 # Go
 !go/
 !go/*
-!go/go.html
-!go/go-engine_v2.js
-!go/event-handlers-go.js
-!go/game-go.js
-!go/graphics-go.js

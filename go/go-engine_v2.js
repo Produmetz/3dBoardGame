@@ -357,6 +357,32 @@ class Board {
         return true;
     }
 
+    /**
+     * Глубокая копия доски для поиска AI (общий Zobrist-таблицы).
+     * @returns {Board}
+     */
+    clone() {
+        const b = Object.create(Board.prototype);
+        b.dims = this.dims.slice();
+        b.totalSize = this.totalSize;
+        b.komi = this.komi;
+        b.grid = this.grid.slice();
+        b.captures = {
+            [Stone.BLACK]: this.captures[Stone.BLACK],
+            [Stone.WHITE]: this.captures[Stone.WHITE]
+        };
+        b.currentPlayer = this.currentPlayer;
+        b.passCount = this.passCount;
+        b.gameOver = this.gameOver;
+        b.resigned = this.resigned;
+        b.moveHistory = this.moveHistory.slice();
+        b.hash = this.hash;
+        b.zobristTable = this.zobristTable;
+        b.stateHistory = [];
+        b.saveState();
+        return b;
+    }
+
     // ---------- Подсчёт очков ----------
     /**
      * Вычисляет очки с использованием подсчёта по площади (китайские правила).
@@ -476,6 +502,7 @@ const GoEngine = {
     HasMoves: (board) => board.hasMoves(),
     isLegalMove: (board, coord, player) => board.isLegalMove(coord, player),
     MakeMove: (board, coord, player) => board.makeMove(coord, player),
+    Clone: (board) => board.clone(),
     Stone: Stone
 };
 

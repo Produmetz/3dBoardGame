@@ -96,6 +96,26 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('open-tutorial')?.addEventListener('click', function () {
         window.location.href = 'go-tutorial.html';
     });
+
+    const goBotEnabled = document.getElementById('go-bot-enabled');
+    const goBotColor = document.getElementById('go-bot-color');
+    const goBotAlgorithm = document.getElementById('go-bot-algorithm');
+    const goBotStrength = document.getElementById('go-bot-strength');
+    const goBotStrengthValue = document.getElementById('go-bot-strength-value');
+
+    goBotEnabled?.addEventListener('change', function () {
+        window.goGame?.setBotEnabled(this.checked);
+    });
+    goBotColor?.addEventListener('change', function () {
+        window.goGame?.setBotColor(this.value);
+    });
+    goBotAlgorithm?.addEventListener('change', function () {
+        window.goGame?.setBotAlgorithm(this.value);
+    });
+    goBotStrength?.addEventListener('input', function () {
+        if (goBotStrengthValue) goBotStrengthValue.textContent = this.value;
+        window.goGame?.setBotStrength(this.value);
+    });
 });
 
 canvas.addEventListener('contextmenu', (e) => {
