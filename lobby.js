@@ -125,10 +125,10 @@ class LobbyManager {
             };
 
             this.socket.onerror = () => {
-                alert('Ошибка подключения к серверу');
+                UI.toast('Ошибка подключения к серверу', 'error');
             };
         } catch(e) {
-            alert('Ошибка подключения');
+            UI.toast('Ошибка подключения', 'error');
         }
     }
 
@@ -198,8 +198,12 @@ class LobbyManager {
                 this.onRoomDeleted(data.roomId);
                 break;
 
+            case 'replay':
+                window.location.href = 'replay.html?data=' + encodeURIComponent(JSON.stringify(data));
+                break;
+
             case 'error':
-                alert(data.message);
+                UI.toast(data.message, 'error');
                 break;
         }
     }
@@ -216,6 +220,7 @@ class LobbyManager {
             boardY: data.boardY || '',
             boardZ: data.boardZ || '',
             komi: data.komi || '',
+            ruleSet: data.ruleSet || '',
             isMyTurn: data.isMyTurn || false,
             opponentName: data.opponentName || '',
             server: this.serverIndex,
@@ -381,7 +386,8 @@ class LobbyManager {
         }
         listDiv.innerHTML = '';
         rooms.forEach(room => {
-            const div = document.createElement('div');
+            const div = document.createElement('button');
+            div.type = 'button';
             div.className = 'room-item';
             div.innerHTML = `
                 <div class="room-item-header">
@@ -427,7 +433,7 @@ class LobbyManager {
         const color = document.getElementById('join-color')?.value || 'white';
 
         if (this.selectedRoomHasPassword && !password) {
-            alert('Введите пароль');
+            UI.toast('Введите пароль', 'error');
             return;
         }
 
@@ -446,8 +452,8 @@ class LobbyManager {
         document.getElementById('join-modal').classList.remove('active');
     }
 
-    leaveRoom(roomId) {
-        if (confirm('Покинуть комнату?')) {
+    async leaveRoom(roomId) {
+        if (await UI.confirm('Покинуть комнату?')) {
             this.send({ type: 'leave_room' });
             // Lists will refresh when 'left_room' response arrives
         }
@@ -456,7 +462,7 @@ class LobbyManager {
     createRoom() {
         const name = document.getElementById('room-name').value.trim();
         if (!name) {
-            alert('Введите название комнаты');
+            UI.toast('Введите название комнаты', 'error');
             return;
         }
         const gameType = document.getElementById('room-game-type').value;
@@ -474,7 +480,8 @@ class LobbyManager {
             boardX: gameType === 'chess' ? 6 : parseInt(document.getElementById('room-board-x').value),
             boardY: gameType === 'chess' ? 6 : parseInt(document.getElementById('room-board-y').value),
             boardZ: gameType === 'chess' ? 8 : parseInt(document.getElementById('room-board-z').value),
-            komi: parseFloat(document.getElementById('room-komi').value)
+            komi: parseFloat(document.getElementById('room-komi').value),
+            ruleSet: gameType === 'go' ? (document.getElementById('room-rule-set')?.value || 'chinese') : undefined
         });
     }
 
@@ -485,8 +492,8 @@ class LobbyManager {
         this.getMyRooms();
     }
 
-    deleteRoom(roomId) {
-        if (confirm('Удалить комнату? Это действие необратимо.')) {
+    async deleteRoom(roomId) {
+        if (await UI.confirm('Удалить комнату? Это действие необратимо.')) {
             this.send({ type: 'delete_room', roomId: roomId });
         }
     }
@@ -569,7 +576,8 @@ class LobbyManager {
             const isWinner = game.winner_name === this.nickname;
             const resultClass = game.winner_name ? (isWinner ? 'win' : 'loss') : 'draw';
             const resultText = game.winner_name ? (isWinner ? 'Победа' : 'Поражение') : 'Ничья';
-            const div = document.createElement('div');
+            const div = document.createElement('button');
+            div.type = 'button';
             div.className = 'history-item';
             div.innerHTML = `
                 <div>

@@ -1,0 +1,425 @@
+/*
+ * Shared styles for the 3D game pages (chess/chess.html, go/go.html) and the
+ * two auxiliary chess pages that reuse the same panel/button/color-picker
+ * components (chess/position-editor.html, chess/figures-tutorial.html).
+ *
+ * This used to be a 412-line <style> block pasted byte-for-byte identically
+ * into both chess.html and go.html — now it's one file all four pages link.
+ */
+
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: var(--font-family);
+    background: var(--gradient-bg-game);
+    color: #fff;
+}
+
+canvas {
+    display: block;
+    pointer-events: auto;
+}
+
+.highlight {
+    color: var(--color-accent);
+    font-weight: bold;
+}
+
+.axis-btn {
+    background: var(--color-accent);
+    border: none;
+    color: var(--color-accent-contrast);
+    padding: 8px 12px;
+    margin: 5px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.axis-btn:hover {
+    background: var(--color-accent-hover);
+    transform: scale(1.05);
+}
+
+.axis-btn.active {
+    background: var(--color-warning);
+    color: white;
+}
+
+.game-btn {
+    background: var(--color-danger);
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    margin: 5px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.game-btn:hover {
+    background: var(--color-danger-hover);
+    transform: scale(1.05);
+}
+
+/* Стили для левой панели */
+#left-panel {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 300px;
+    padding-left: 10px;
+}
+
+/* Стили для правой панели */
+#right-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 320px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding-right: 10px;
+}
+
+/* Стиль для скроллбара left-панели */
+#left-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+#left-panel::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+#left-panel::-webkit-scrollbar-thumb {
+    background: var(--color-accent);
+    border-radius: 4px;
+}
+
+#left-panel::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent-hover);
+}
+
+/* Стиль для скроллбара right-панели */
+#right-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+#right-panel::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+#right-panel::-webkit-scrollbar-thumb {
+    background: var(--color-accent);
+    border-radius: 4px;
+}
+
+#right-panel::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent-hover);
+}
+
+.panel-section {
+    background: var(--color-panel-bg-game);
+    padding: 15px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-panel-game);
+}
+
+.panel-section h3 {
+    margin-top: 0;
+    color: var(--color-accent);
+    text-shadow: 0 0 5px var(--color-accent);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-section h3::after {
+    content: "▼";
+    font-size: 12px;
+    transition: transform 0.3s;
+}
+
+.panel-section.collapsed h3::after {
+    transform: rotate(-90deg);
+}
+
+.panel-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    max-height: 1000px;
+}
+
+.panel-section.collapsed .panel-content {
+    max-height: 0;
+}
+
+#game-info {
+    font-size: 16px;
+    text-align: center;
+}
+
+/* Стили для отображения статуса игры */
+#game-status {
+    margin-top: 10px;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.status-check {
+    background-color: rgba(255, 152, 0, 0.2);
+    color: var(--color-warning);
+    border: 1px solid var(--color-warning);
+}
+
+.status-checkmate {
+    background-color: rgba(240, 84, 84, 0.2);
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
+    animation: pulse 1.5s infinite;
+}
+
+/* Previously only defined in figures-tutorial.html — chess.html/go.html
+   referenced this animation on .status-checkmate but never defined it, so
+   the checkmate indicator never actually pulsed on the real game pages. */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+#move-history {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.move-entry {
+    margin: 5px 0;
+    padding: 3px;
+    border-bottom: 1px solid var(--color-accent);
+    font-family: monospace;
+}
+
+.buttons-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+#file-input {
+    display: none;
+}
+
+/* Стили для выбора цветов */
+.color-picker-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.color-input-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.color-input-container label {
+    min-width: 80px;
+}
+
+.color-input {
+    width: 100%;
+    height: 30px;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+/* Новые стили для сетевой игры */
+.network-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--color-accent);
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.network-section.visible {
+    max-height: 1000px;
+}
+
+.toggle-network-btn {
+    background: var(--color-accent);
+    border: none;
+    color: var(--color-accent-contrast);
+    padding: 8px 12px;
+    margin: 5px 0;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+    width: 100%;
+}
+
+.toggle-network-btn:hover {
+    background: var(--color-accent-hover);
+}
+
+.sub-section {
+    margin-bottom: 15px;
+    border-bottom: 1px solid rgba(76, 201, 240, 0.3);
+    padding-bottom: 10px;
+}
+
+.sub-section:last-child {
+    border-bottom: none;
+}
+
+.sub-section h4 {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 10px 0 5px 0;
+    color: var(--color-accent-hover);
+    text-shadow: 0 0 3px var(--color-accent-hover);
+}
+
+.sub-section h4::after {
+    content: "▼";
+    font-size: 12px;
+    transition: transform 0.3s;
+}
+
+.sub-section.collapsed h4::after {
+    transform: rotate(-90deg);
+}
+
+.sub-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    max-height: 1000px;
+}
+
+.sub-section.collapsed .sub-content {
+    max-height: 0;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Мобильная версия */
+@media screen and (max-width: 768px) {
+
+    /* Канвас фиксируется, чтобы оставаться на месте при прокрутке */
+    canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 1;
+        pointer-events: auto;
+        /* доска остаётся интерактивной */
+    }
+
+    /* Панели выстраиваются вертикально, фон прозрачный (фон задаётся секциями) */
+    #left-panel,
+    #right-panel {
+        position: relative;
+        top: auto;
+        left: auto;
+        right: auto;
+        bottom: auto;
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        box-sizing: border-box;
+        background: transparent;
+        z-index: 2;
+        overflow-y: visible;
+        /* отключаем собственные скроллы */
+        padding-bottom: 10px;
+    }
+
+    body {
+        overflow-y: auto;
+        min-height: 100vh;
+        padding-bottom: 100vh;
+        /* пустое пространство высотой с экран */
+    }
+
+    #left-panel {
+        order: 1;
+    }
+
+    #right-panel {
+        order: 2;
+    }
+
+    #toggle-panels {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        margin: 0;
+    }
+
+    /* Стили секций: полупрозрачный фон с размытием для лучшей читаемости на фоне доски */
+    .panel-section {
+        background: rgba(10, 25, 47, 0.85);
+        backdrop-filter: blur(5px);
+        margin-bottom: 10px;
+        /* отступ между секциями */
+    }
+
+    /* Адаптация кнопок и полей ввода для удобного нажатия пальцем */
+    .buttons-row {
+        flex-wrap: wrap;
+    }
+
+    .axis-btn,
+    .game-btn {
+        padding: 10px 12px;
+        font-size: 16px;
+        min-width: 80px;
+    }
+
+    .network-input {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 8px;
+        padding: 10px;
+        font-size: 16px;
+    }
+}
+
+/* Скрываем кнопку toggle-panels на десктопе (она только для мобильной раскладки выше) */
+@media screen and (min-width: 769px) {
+    #toggle-panels {
+        display: none;
+    }
+}

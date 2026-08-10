@@ -1,7 +1,9 @@
 /**
  * 3D движок Го (n-мерный, по умолчанию 3D)
- * Поддерживает переменную размерность, подсчёт очков по площади (китайские правила),
- * простое ко и основные правила Го.
+ * Поддерживает переменную размерность, подсчёт очков по трём наборам правил
+ * (китайские — по площади; японские/корейские — по территории + пленные),
+ * этап согласования мёртвых камней перед подсчётом, простое ко и основные
+ * правила Го.
  * API соответствует указанной спецификации.
  */
 
@@ -18,11 +20,19 @@ const Stone = {
  * @param {number} komi - Значение коми (по умолчанию 7.5).
  */
 class Board {
-    constructor(dims, komi = 7.5) {
+    /**
+     * @param {number[]} dims
+     * @param {number} komi
+     * @param {'chinese'|'japanese'|'korean'} ruleSet - влияет только на формулу
+     *   подсчёта очков (computeScore) — 'chinese' считает камни+территорию,
+     *   'japanese'/'korean' — территорию+пленные (механически идентичны).
+     */
+    constructor(dims, komi = 7.5, ruleSet = 'chinese') {
         this.dims = dims.slice();                 // копия размерностей
         this.totalSize = dims.reduce((a, b) => a * b, 1);
         this.grid = new Array(this.totalSize).fill(Stone.EMPTY);
         this.komi = komi;
+        this.ruleSet = (ruleSet === 'japanese' || ruleSet === 'korean') ? ruleSet : 'chinese';
         this.currentPlayer = Stone.BLACK;
         this.captures = { [Stone.BLACK]: 0, [Stone.WHITE]: 0 };
         this.moveHistory = [];                    // хранит хэши Цобриста после каждого хода
@@ -31,6 +41,10 @@ class Board {
         this.passCount = 0;
         this.gameOver = false;
         this.resigned = false;
+        // Между вторым пасом подряд и подтверждением подсчёта (согласованием
+        // мёртвых камней) — партия ещё не закончена, но обычные ходы уже
+        // недоступны. См. pass()/finalizeScoring()/resumeFromScoring().
+        this.awaitingScoring = false;
 
         // Инициализация хэширования Цобриста
         this.initZobrist();
@@ -270,7 +284,7 @@ class Board {
      * @returns {boolean} True, если ход успешно выполнен.
      */
     makeMove(coord, player) {
-        if (this.gameOver) return false;
+        if (this.gameOver || this.awaitingScoring) return false;
         //if (player !== this.currentPlayer) return false;
         //if (!this.isLegalMove(coord, player)) return false;
 
@@ -304,10 +318,12 @@ class Board {
      * @returns {boolean} True, если пропуск выполнен успешно.
      */
     pass() {
-        if (this.gameOver) return false;
+        if (this.gameOver || this.awaitingScoring) return false;
         this.passCount++;
         if (this.passCount >= 2) {
-            this.gameOver = true;
+            // Партия ещё не окончена — сначала согласование мёртвых камней.
+            // См. finalizeScoring()/resumeFromScoring().
+            this.awaitingScoring = true;
         }
         this.currentPlayer = this.currentPlayer === Stone.BLACK ? Stone.WHITE : Stone.BLACK;
         this.saveState();
@@ -321,7 +337,76 @@ class Board {
     resign() {
         if (this.gameOver) return false;
         this.gameOver = true;
+        this.awaitingScoring = false;
         this.resigned = true;
+        this.saveState();
+        return true;
+    }
+
+    /**
+     * Находит связную группу камней, содержащую координату `coord` (0 очков,
+     * если клетка пуста) — публичная обёртка над getGroup для UI разметки.
+     * @param {number[]} coord
+     * @returns {number[][]} Координаты камней в группе (пусто, если клетка пуста).
+     */
+    groupAt(coord) {
+        return this.getGroup(coord);
+    }
+
+    /**
+     * Считает итоговый счёт, как если бы переданные группы камней были сняты
+     * с доски как мёртвые — не меняет состояние (для живого превью в UI).
+     * @param {number[][]} deadCoords - Координаты клеток с мёртвыми камнями
+     *   (не обязательно по одной на группу — годится любой список клеток).
+     * @returns {{black:number, white:number}}
+     */
+    previewScore(deadCoords) {
+        const clone = this.clone();
+        clone._removeDeadStones(deadCoords);
+        return clone.computeScore();
+    }
+
+    /**
+     * Физически снимает переданные клетки с доски как настоящее взятие
+     * (идёт в captures — как и обычный захват при обычном ходе).
+     * @param {number[][]} deadCoords
+     */
+    _removeDeadStones(deadCoords) {
+        const seen = new Set();
+        for (const coord of deadCoords) {
+            const idx = this.coordToIndex(coord);
+            if (seen.has(idx)) continue;
+            if (this.grid[idx] === Stone.EMPTY) continue;
+            const group = this.getGroup(coord);
+            for (const c of group) seen.add(this.coordToIndex(c));
+            this.removeGroup(group);
+        }
+    }
+
+    /**
+     * Подтверждает подсчёт: снимает мёртвые камни (как настоящее взятие) и
+     * завершает партию. После этого computeScore() считает по уже «очищенной» доске.
+     * @param {number[][]} deadCoords - Клетки с мёртвыми камнями.
+     * @returns {boolean} True, если подтверждение выполнено (была фаза разметки).
+     */
+    finalizeScoring(deadCoords) {
+        if (!this.awaitingScoring) return false;
+        this._removeDeadStones(deadCoords || []);
+        this.awaitingScoring = false;
+        this.gameOver = true;
+        this.saveState();
+        return true;
+    }
+
+    /**
+     * Отменяет фазу разметки и возвращает игру к обычному ходу (ничего не
+     * снималось с доски, раз finalizeScoring не вызывался — просто продолжаем).
+     * @returns {boolean} True, если отмена выполнена (была фаза разметки).
+     */
+    resumeFromScoring() {
+        if (!this.awaitingScoring) return false;
+        this.awaitingScoring = false;
+        this.passCount = 0;
         this.saveState();
         return true;
     }
@@ -335,6 +420,7 @@ class Board {
             passCount: this.passCount,
             gameOver: this.gameOver,
             resigned: this.resigned,
+            awaitingScoring: this.awaitingScoring,
             moveHistory: [...this.moveHistory],
             hash: this.hash
         };
@@ -352,6 +438,7 @@ class Board {
         this.passCount = prevState.passCount;
         this.gameOver = prevState.gameOver;
         this.resigned = prevState.resigned;
+        this.awaitingScoring = !!prevState.awaitingScoring;
         this.moveHistory = [...prevState.moveHistory];
         this.hash = prevState.hash;
         return true;
@@ -366,6 +453,7 @@ class Board {
         b.dims = this.dims.slice();
         b.totalSize = this.totalSize;
         b.komi = this.komi;
+        b.ruleSet = this.ruleSet;
         b.grid = this.grid.slice();
         b.captures = {
             [Stone.BLACK]: this.captures[Stone.BLACK],
@@ -375,6 +463,7 @@ class Board {
         b.passCount = this.passCount;
         b.gameOver = this.gameOver;
         b.resigned = this.resigned;
+        b.awaitingScoring = this.awaitingScoring;
         b.moveHistory = this.moveHistory.slice();
         b.hash = this.hash;
         b.zobristTable = this.zobristTable;
@@ -385,7 +474,10 @@ class Board {
 
     // ---------- Подсчёт очков ----------
     /**
-     * Вычисляет очки с использованием подсчёта по площади (китайские правила).
+     * Вычисляет очки по выбранным правилам (this.ruleSet):
+     * - 'chinese' — по площади: свои камни на доске + территория + коми.
+     * - 'japanese'/'korean' — только территория + пленные камни + коми
+     *   (механически идентичны в этом движке).
      * @returns {{black: number, white: number}} Очки для чёрных и белых.
      */
     computeScore() {
@@ -435,14 +527,26 @@ class Board {
             }
         }
 
-        // Считаем камни и территорию
         let blackScore = 0;
         let whiteScore = 0;
-        for (let i = 0; i < this.totalSize; i++) {
-            if (this.grid[i] === Stone.BLACK) blackScore++;
-            else if (this.grid[i] === Stone.WHITE) whiteScore++;
-            else if (territory[i] === Stone.BLACK) blackScore++;
-            else if (territory[i] === Stone.WHITE) whiteScore++;
+
+        if (this.ruleSet === 'chinese') {
+            // Площадь: свои камни на доске + территория.
+            for (let i = 0; i < this.totalSize; i++) {
+                if (this.grid[i] === Stone.BLACK) blackScore++;
+                else if (this.grid[i] === Stone.WHITE) whiteScore++;
+                else if (territory[i] === Stone.BLACK) blackScore++;
+                else if (territory[i] === Stone.WHITE) whiteScore++;
+            }
+        } else {
+            // Территория (японские/корейские): только территория + пленные.
+            // captures[WHITE] — снятые белые камни, т.е. пленные у чёрных, и наоборот.
+            for (let i = 0; i < this.totalSize; i++) {
+                if (territory[i] === Stone.BLACK) blackScore++;
+                else if (territory[i] === Stone.WHITE) whiteScore++;
+            }
+            blackScore += this.captures[Stone.WHITE];
+            whiteScore += this.captures[Stone.BLACK];
         }
 
         whiteScore += this.komi;
@@ -460,6 +564,10 @@ class Board {
 
     isGameOver() {
         return this.gameOver;
+    }
+
+    isAwaitingScoring() {
+        return this.awaitingScoring;
     }
 
     getCapturedStones() {
@@ -489,13 +597,18 @@ class Board {
 // ---------- Экспорт API ----------
 const GoEngine = {
     Board: Board,
-    InitBoard: (dimensions, komi = 7.5) => new Board(dimensions, komi),
+    InitBoard: (dimensions, komi = 7.5, ruleSet = 'chinese') => new Board(dimensions, komi, ruleSet),
     SetKomi: (board, komi) => { board.komi = komi; },
     Pass: (board) => board.pass(),
     Resign: (board) => board.resign(),
     ComputeScore: (board) => board.computeScore(),
     GetScore: (board) => board.getScore(),
     IsGameOver: (board) => board.isGameOver(),
+    IsAwaitingScoring: (board) => board.isAwaitingScoring(),
+    GroupAt: (board, coord) => board.groupAt(coord),
+    PreviewScore: (board, deadCoords) => board.previewScore(deadCoords),
+    FinalizeScoring: (board, deadCoords) => board.finalizeScoring(deadCoords),
+    ResumeFromScoring: (board) => board.resumeFromScoring(),
     GetCurrentPlayer: (board) => board.getCurrentPlayer(),
     GetCapturedStones: (board) => board.getCapturedStones(),
     GetPossibleMoves: (board) => board.getPossibleMoves(),

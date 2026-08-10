@@ -292,15 +292,53 @@
     }
 
     function makeMove(pole, move) {
+        const engine = getEngine();
+        const piece = pole[move.from.x][move.from.y][move.from.z];
         const captured = pole[move.to.x][move.to.y][move.to.z];
-        pole[move.to.x][move.to.y][move.to.z] = pole[move.from.x][move.from.y][move.from.z];
+        const priorEnPassantTarget = engine.GetEnPassantTarget ? engine.GetEnPassantTarget() : null;
+
+        // Взятие на проходе: пешка идёт на пустую клетку, совпадающую с
+        // текущей целью — настоящая взятая пешка стоит не на клетке
+        // назначения, а рядом, на исходном z-слое ходящей пешки. Без этого
+        // бот не убирал бы вражескую пешку в своей внутренней симуляции и
+        // неверно оценивал бы позицию после en passant.
+        let epPos = null;
+        let epCapturedFigure = null;
+        if (
+            !captured && piece && piece.Name === 'Pawn' && priorEnPassantTarget &&
+            move.to.x === priorEnPassantTarget[0] && move.to.y === priorEnPassantTarget[1] && move.to.z === priorEnPassantTarget[2] &&
+            (move.from.x !== move.to.x || move.from.y !== move.to.y)
+        ) {
+            epPos = { x: move.to.x, y: move.to.y, z: move.from.z };
+            epCapturedFigure = pole[epPos.x][epPos.y][epPos.z];
+            if (epCapturedFigure) pole[epPos.x][epPos.y][epPos.z] = null;
+        }
+
+        pole[move.to.x][move.to.y][move.to.z] = piece;
         pole[move.from.x][move.from.y][move.from.z] = null;
-        return captured;
+
+        // Держим EnPassantTarget синхронизированным на всех плаях поиска
+        // (не только в корне), иначе поиск не увидит новые/истёкшие
+        // возможности взятия на проходе на глубине.
+        if (engine.SetEnPassantTarget) {
+            if (piece && piece.Name === 'Pawn' && move.from.x === move.to.x && move.from.y === move.to.y && Math.abs(move.to.z - move.from.z) === 2) {
+                engine.SetEnPassantTarget([move.from.x, move.from.y, (move.from.z + move.to.z) / 2]);
+            } else {
+                engine.SetEnPassantTarget(null);
+            }
+        }
+
+        return { captured: captured || epCapturedFigure, epPos, epCapturedFigure, priorEnPassantTarget };
     }
 
-    function unmakeMove(pole, move, captured) {
+    function unmakeMove(pole, move, result) {
         pole[move.from.x][move.from.y][move.from.z] = pole[move.to.x][move.to.y][move.to.z];
-        pole[move.to.x][move.to.y][move.to.z] = captured;
+        pole[move.to.x][move.to.y][move.to.z] = (result.captured && !result.epCapturedFigure) ? result.captured : null;
+        if (result.epPos && result.epCapturedFigure) {
+            pole[result.epPos.x][result.epPos.y][result.epPos.z] = result.epCapturedFigure;
+        }
+        const engine = getEngine();
+        if (engine.SetEnPassantTarget) engine.SetEnPassantTarget(result.priorEnPassantTarget);
     }
 
     function clonePole(pole) {

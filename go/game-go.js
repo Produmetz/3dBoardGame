@@ -12,6 +12,11 @@ class GoGame {
         this.isMyTurn = true;
         this.selectedRoomId = null;
 
+        // Этап согласования мёртвых камней перед подсчётом очков.
+        this.deadStones = new Set();
+        this.scoringSubmitted = false;
+        this.opponentSubmittedScoring = false;
+
         // Локальный бот
         this.botEnabled = false;
         this.botColor = 'White'; // белые по умолчанию (чёрные ходят первые)
@@ -37,13 +42,17 @@ class GoGame {
         const sizeY = parseInt(document.getElementById('go-size-y').value) || 5;
         const sizeZ = parseInt(document.getElementById('go-size-z').value) || 5;
         const komi = parseFloat(document.getElementById('go-komi').value) || 6.5;
+        const ruleSetSelect = document.getElementById('go-rule-set');
+        const ruleSet = ruleSetSelect ? ruleSetSelect.value : 'chinese';
 
         // Создаём новую доску
-        this.board = new GoEngine.Board([sizeX, sizeY, sizeZ], komi);
+        this.board = new GoEngine.Board([sizeX, sizeY, sizeZ], komi, ruleSet);
 
         this.moveHistory = [];
         this.isNetworkGame = false;
         this.setMyTurn(true);
+        this.resetScoringState();
+        this.hideScoringPanel();
 
         // Перерисовываем доску
         GraphicsEngine.createAndFillBoardForGo(this.board);
@@ -114,9 +123,16 @@ class GoGame {
         if (!cellCoords) return;
 
         if (this.networkManager && this.networkManager.isSpectator) return;
-        if (this.isBotSideToMove() || this.botThinking) return;
 
         const { i, j, k } = cellCoords;
+
+        if (this.board.isAwaitingScoring()) {
+            this.toggleDeadGroupAt(i, j, k);
+            return;
+        }
+
+        if (this.isBotSideToMove() || this.botThinking) return;
+
         const idx = this.board.coordToIndex([i, j, k]);
         const stone = this.board.grid[idx];
 
@@ -224,7 +240,7 @@ class GoGame {
 
     maybeBotMove() {
         if (this.isNetworkGame || !this.botEnabled || this.botThinking) return;
-        if (!this.board || this.board.isGameOver()) {
+        if (!this.board || this.board.isGameOver() || this.board.isAwaitingScoring()) {
             this.updateBotStatusUI();
             return;
         }
@@ -332,13 +348,13 @@ class GoGame {
                 GraphicsEngine.unselectCell();
                 this.maybeBotMove();
             } else {
-                alert('Невозможно отменить ход');
+                UI.toast('Невозможно отменить ход', 'error');
             }
         }
     }
 
     pass(fromBot = false) {
-        if (!this.board || this.board.isGameOver()) return;
+        if (!this.board || this.board.isGameOver() || this.board.isAwaitingScoring()) return;
         if (this.isNetworkGame && !this.isMyTurn) return;
         if (this.botThinking && !fromBot) return;
         if (!this.isNetworkGame && this.botEnabled && this.isBotSideToMove() && !fromBot) return;
@@ -355,10 +371,9 @@ class GoGame {
             this.checkGameState();
             this.updateUI();
 
-            if (this.board.isGameOver()) {
-                const score = this.board.computeScore();
-                alert(`Игра окончена. Счёт: чёрные ${score.black}, белые ${score.white}`);
-            } else {
+            if (this.board.isAwaitingScoring()) {
+                this.enterScoringPhase();
+            } else if (!this.board.isGameOver()) {
                 this.maybeBotMove();
             }
         }
@@ -373,9 +388,157 @@ class GoGame {
             if (this.isNetworkGame && !this.isNetworkMove) {
                 this.networkManager.sendResign();
             }
-            alert(`Игра окончена. Победитель: ${winner} (сдача)`);
+            UI.toast(`Игра окончена. Победитель: ${winner} (сдача)`, 'info');
             this.updateUI();
         }
+    }
+
+    // ---------- Этап согласования мёртвых камней ----------
+
+    resetScoringState() {
+        this.deadStones = new Set();
+        this.scoringSubmitted = false;
+        this.opponentSubmittedScoring = false;
+    }
+
+    enterScoringPhase() {
+        this.resetScoringState();
+        GraphicsEngine.createAndFillBoardForGo(this.board, this.deadStones);
+        this.showScoringPanel();
+        this.updateScoringPanel();
+    }
+
+    exitScoringPhase() {
+        this.resetScoringState();
+        this.hideScoringPanel();
+    }
+
+    showScoringPanel() {
+        const panel = document.getElementById('go-scoring-panel');
+        if (panel) panel.style.display = 'block';
+    }
+
+    hideScoringPanel() {
+        const panel = document.getElementById('go-scoring-panel');
+        if (panel) panel.style.display = 'none';
+    }
+
+    deadCoordsArray() {
+        return Array.from(this.deadStones).map(key => key.split(',').map(Number));
+    }
+
+    toggleDeadGroupAt(i, j, k) {
+        if (!this.board || !this.board.isAwaitingScoring()) return;
+        if (this.networkManager && this.networkManager.isSpectator) return;
+
+        const idx = this.board.coordToIndex([i, j, k]);
+        if (this.board.grid[idx] === GoEngine.Stone.EMPTY) return;
+
+        const group = this.board.groupAt([i, j, k]);
+        const key = `${i},${j},${k}`;
+        const markDead = !this.deadStones.has(key);
+        for (const coord of group) {
+            const groupKey = coord.join(',');
+            if (markDead) this.deadStones.add(groupKey);
+            else this.deadStones.delete(groupKey);
+        }
+
+        // A new mark invalidates whatever was already sent to the opponent.
+        if (this.isNetworkGame) this.scoringSubmitted = false;
+
+        GraphicsEngine.createAndFillBoardForGo(this.board, this.deadStones);
+        this.updateScoringPanel();
+    }
+
+    updateScoringPanel() {
+        if (!this.board) return;
+        const scoreEl = document.getElementById('go-scoring-score');
+        if (scoreEl) {
+            const preview = this.board.previewScore(this.deadCoordsArray());
+            scoreEl.textContent = `Предварительный счёт: Чёрные ${preview.black} - ${preview.white} Белые`;
+        }
+
+        const statusEl = document.getElementById('go-scoring-network-status');
+        if (statusEl) {
+            if (this.isNetworkGame) {
+                statusEl.style.display = 'block';
+                if (this.scoringSubmitted && this.opponentSubmittedScoring) {
+                    statusEl.textContent = 'Разметки отправлены, проверяем совпадение...';
+                } else if (this.scoringSubmitted) {
+                    statusEl.textContent = 'Ваша разметка отправлена. Ожидание соперника...';
+                } else if (this.opponentSubmittedScoring) {
+                    statusEl.textContent = 'Соперник отправил разметку. Отметьте мёртвые камни и подтвердите.';
+                } else {
+                    statusEl.textContent = '';
+                }
+            } else {
+                statusEl.style.display = 'none';
+            }
+        }
+    }
+
+    confirmScoring() {
+        if (!this.board || !this.board.isAwaitingScoring()) return;
+        if (this.networkManager && this.networkManager.isSpectator) return;
+
+        if (this.isNetworkGame) {
+            this.scoringSubmitted = true;
+            this.networkManager.sendGoSubmitScoring(this.deadCoordsArray());
+            this.updateScoringPanel();
+            return;
+        }
+
+        const success = this.board.finalizeScoring(this.deadCoordsArray());
+        if (!success) return;
+        this.exitScoringPhase();
+        GraphicsEngine.createAndFillBoardForGo(this.board);
+        this.checkGameState();
+        this.updateUI();
+    }
+
+    resumeFromScoring() {
+        if (!this.board || !this.board.isAwaitingScoring()) return;
+        if (this.networkManager && this.networkManager.isSpectator) return;
+
+        if (this.isNetworkGame) {
+            this.networkManager.sendGoResumePlay();
+            return;
+        }
+
+        const success = this.board.resumeFromScoring();
+        if (!success) return;
+        this.exitScoringPhase();
+        GraphicsEngine.createAndFillBoardForGo(this.board);
+        this.updateUI();
+        this.maybeBotMove();
+    }
+
+    handleGoScoringSubmitted(data) {
+        if (!this.board || !this.board.isAwaitingScoring()) return;
+        if (data && data.by === this.networkManager.playerName) return;
+        this.opponentSubmittedScoring = true;
+        this.updateScoringPanel();
+    }
+
+    handleGoScoringMismatch(data) {
+        if (!this.board || !this.board.isAwaitingScoring()) return;
+        this.resetScoringState();
+        const mine = (data && data.mine) || [];
+        this.deadStones = new Set(mine.map(c => `${c.x},${c.y},${c.z}`));
+        GraphicsEngine.createAndFillBoardForGo(this.board, this.deadStones);
+        this.updateScoringPanel();
+        UI.toast('Разметка мёртвых камней не совпала с соперником. Отметьте заново.', 'error');
+    }
+
+    handleGoResumed() {
+        if (this.board) {
+            this.board.resumeFromScoring();
+        }
+        this.exitScoringPhase();
+        GraphicsEngine.createAndFillBoardForGo(this.board);
+        this.checkGameState();
+        this.updateUI();
+        UI.toast('Партия продолжается.', 'info');
     }
 
     checkGameState() {
@@ -387,6 +550,8 @@ class GoGame {
                 const winner = score.black > score.white ? 'Black' : (score.white > score.black ? 'White' : null);
                 this.networkManager.sendGameOver(winner);
             }
+        } else if (this.board.isAwaitingScoring()) {
+            document.getElementById('game-status').textContent = 'Подсчёт очков: отметьте мёртвые камни';
         } else {
             document.getElementById('game-status').textContent = '';
         }
@@ -440,7 +605,7 @@ class GoGame {
         const address = document.getElementById('server-address').value;
         const playerName = document.getElementById('player-name').value;
         if (!address || !playerName) {
-            alert('Заполните адрес сервера и ваше имя');
+            UI.toast('Заполните адрес сервера и ваше имя', 'error');
             return;
         }
         this.networkManager.connect(address, playerName);
@@ -467,26 +632,30 @@ class GoGame {
         this.networkManager.requestRoomList();
     }
 
-    setBoardParams(x, y, z, komi) {
+    setBoardParams(x, y, z, komi, ruleSet) {
         const wasNetworkGame = this.isNetworkGame;
         document.getElementById('go-size-x').value = x;
         document.getElementById('go-size-y').value = y;
         document.getElementById('go-size-z').value = z;
         document.getElementById('go-komi').value = komi;
+        const ruleSetSelect = document.getElementById('go-rule-set');
+        if (ruleSetSelect && ruleSet) ruleSetSelect.value = ruleSet;
         this.resetGame();
         this.isNetworkGame = wasNetworkGame;
     }
 
     confirmCreateRoom() {
         const name = document.getElementById('new-room-name').value.trim();
-        if (!name) return alert('Введите название комнаты');
+        if (!name) return UI.toast('Введите название комнаты', 'error');
         const pwd = document.getElementById('new-room-password').value;
         const isPublic = document.getElementById('new-room-public').checked;
         const boardX = parseInt(document.getElementById('go-size-x').value);
         const boardY = parseInt(document.getElementById('go-size-y').value);
         const boardZ = parseInt(document.getElementById('go-size-z').value);
         const komi = parseFloat(document.getElementById('go-komi').value);
-        this.networkManager.createRoom(name, pwd || null, isPublic, 'go', boardX, boardY, boardZ, komi);
+        const ruleSetSelect = document.getElementById('go-rule-set');
+        const ruleSet = ruleSetSelect ? ruleSetSelect.value : 'chinese';
+        this.networkManager.createRoom(name, pwd || null, isPublic, 'go', boardX, boardY, boardZ, komi, ruleSet);
     }
 
     cancelCreateRoom() {}
@@ -558,7 +727,7 @@ class GoGame {
     }
 
     handleNetworkResign() {
-        alert('Противник сдался. Вы победили!');
+        UI.toast('Противник сдался. Вы победили!', 'success');
         this.board.gameOver = true;
         this.board.resigned = true;
         this.setMyTurn(false);
@@ -566,7 +735,15 @@ class GoGame {
     }
 
     handleGameOver(data) {
-        this.board.gameOver = true;
+        if (this.board.isAwaitingScoring()) {
+            // The server only reaches game_over via a matched dead-stone
+            // agreement, so our own last-submitted marking is by definition
+            // the same set the server just used — mirror it locally.
+            this.board.finalizeScoring(this.deadCoordsArray());
+            this.exitScoringPhase();
+        } else {
+            this.board.gameOver = true;
+        }
         this.setMyTurn(false);
         const result = data.result || 'win';
         const winner = data.winner;
@@ -589,29 +766,29 @@ class GoGame {
             document.getElementById('game-result-mode').textContent = data.gameMode === 'rated' ? 'Рейтинговая' : 'Без рейтинга';
             panel.style.display = 'block';
         } else {
-            alert(message);
+            UI.toast(message, 'info');
         }
         this.updateUI();
     }
 
-    handleDrawOffer(data) {
-        const accepted = confirm(`Игрок ${data.from} предлагает ничью. Принять?`);
+    async handleDrawOffer(data) {
+        const accepted = await UI.confirm(`Игрок ${data.from} предлагает ничью. Принять?`);
         this.networkManager.sendDrawResponse(accepted);
     }
 
     handleDrawResponse(data) {
         if (data.accepted) {
-            alert('Ничья принята!');
+            UI.toast('Ничья принята!', 'success');
             this.board.gameOver = true;
             this.setMyTurn(false);
             this.updateUI();
         } else {
-            alert('Предложение ничьей отклонено.');
+            UI.toast('Предложение ничьей отклонено.', 'info');
         }
     }
 
-    handleRematchOffer(data) {
-        const accepted = confirm(`Игрок ${data.from} предлагает реванш. Принять?`);
+    async handleRematchOffer(data) {
+        const accepted = await UI.confirm(`Игрок ${data.from} предлагает реванш. Принять?`);
         this.networkManager.sendRematchResponse(accepted);
     }
 
@@ -629,11 +806,14 @@ class GoGame {
     handleRematchStart(data) {
         this.board = new GoEngine.Board(
             [data.boardX || 5, data.boardY || 5, data.boardZ || 5],
-            data.komi || 6.5
+            data.komi || 6.5,
+            data.ruleSet || 'chinese'
         );
         this.moveHistory = [];
         this.playerColor = data.color;
         this.setMyTurn(data.isMyTurn);
+        this.resetScoringState();
+        this.hideScoringPanel();
         GraphicsEngine.createAndFillBoardForGo(this.board);
         this.updateUI();
         document.getElementById('game-result-panel').style.display = 'none';
@@ -649,9 +829,9 @@ class GoGame {
         }
     }
 
-    handleUndoRequest() {
+    async handleUndoRequest() {
         this.pendingUndoRequest = true;
-        const agree = confirm('Противник предлагает отменить ход. Вы согласны?');
+        const agree = await UI.confirm('Противник предлагает отменить ход. Вы согласны?');
         this.networkManager.sendUndoResponse(agree);
         if (agree) {
             this.processUndo();
@@ -667,7 +847,7 @@ class GoGame {
         if (accepted) {
             this.processUndo();
         } else {
-            alert('Противник отклонил предложение отменить ход.');
+            UI.toast('Противник отклонил предложение отменить ход.', 'info');
         }
     }
 
@@ -683,7 +863,7 @@ class GoGame {
             this.updateUI();
             GraphicsEngine.unselectCell();
         } else {
-            alert('Невозможно отменить ход');
+            UI.toast('Невозможно отменить ход', 'error');
         }
     }
 
@@ -779,9 +959,9 @@ class GoGame {
                 this.changeColor('whiteFigure', settings.whiteFiguresColor);
                 this.changeColor('blackFigure', settings.blackFiguresColor);
 
-                alert('Настройки успешно загружены!');
+                UI.toast('Настройки успешно загружены!', 'success');
             } catch (error) {
-                alert('Ошибка при загрузке настроек: ' + error.message);
+                UI.toast('Ошибка при загрузке настроек: ' + error.message, 'error');
             }
         };
         reader.readAsText(file);
@@ -814,16 +994,18 @@ class GoGame {
 
     saveGame() {
         const saveData = {
-            version: 1,
+            version: 2,
             gameType: 'go',
             dims: this.board.dims,
             komi: this.board.komi,
+            ruleSet: this.board.ruleSet,
             grid: this.board.grid.slice(),
             currentPlayer: this.board.currentPlayer,
             captures: this.board.captures,
             passCount: this.board.passCount,
             gameOver: this.board.gameOver,
             resigned: this.board.resigned,
+            awaitingScoring: this.board.awaitingScoring,
             moveHistory: this.moveHistory
         };
         const json = JSON.stringify(saveData);
@@ -844,12 +1026,12 @@ class GoGame {
 
                 // Проверяем, что это сохранение игры Го
                 if (data.gameType !== 'go') {
-                    alert('Это не сохранение игры Го');
+                    UI.toast('Это не сохранение игры Го', 'error');
                     return;
                 }
 
-                // Создаём новую доску с теми же размерами и коми
-                this.board = new GoEngine.Board(data.dims, data.komi);
+                // Создаём новую доску с теми же размерами, коми и правилами
+                this.board = new GoEngine.Board(data.dims, data.komi, data.ruleSet || 'chinese');
 
                 // Восстанавливаем состояние доски
                 this.board.grid = data.grid.slice();
@@ -858,6 +1040,7 @@ class GoGame {
                 this.board.passCount = data.passCount;
                 this.board.gameOver = data.gameOver;
                 this.board.resigned = data.resigned;
+                this.board.awaitingScoring = !!data.awaitingScoring;
 
                 // Пересчитываем хэш доски (необходимо для правильной работы ко)
                 this.board.hash = this.board.computeHash();
@@ -868,8 +1051,17 @@ class GoGame {
                 // Сбрасываем сетевой режим (загруженная игра – локальная)
                 this.isNetworkGame = false;
                 this.setMyTurn(true);
+                const ruleSetSelect = document.getElementById('go-rule-set');
+                if (ruleSetSelect) ruleSetSelect.value = this.board.ruleSet;
 
                 // Обновляем отображение доски и UI
+                this.resetScoringState();
+                if (this.board.awaitingScoring) {
+                    this.showScoringPanel();
+                    this.updateScoringPanel();
+                } else {
+                    this.hideScoringPanel();
+                }
                 GraphicsEngine.createAndFillBoardForGo(this.board);
                 this.updateUI();
                 this.checkGameState();
@@ -878,12 +1070,12 @@ class GoGame {
                 // Сообщаем о результате загрузки
                 if (this.board.gameOver) {
                     const score = this.board.computeScore();
-                    alert(`Игра загружена. Счёт: чёрные ${score.black}, белые ${score.white}`);
+                    UI.toast(`Игра загружена. Счёт: чёрные ${score.black}, белые ${score.white}`, 'info');
                 } else {
-                    alert('Игра успешно загружена');
+                    UI.toast('Игра успешно загружена', 'success');
                 }
             } catch (err) {
-                alert('Ошибка при загрузке: ' + err.message);
+                UI.toast('Ошибка при загрузке: ' + err.message, 'error');
             }
         };
         reader.readAsText(file);

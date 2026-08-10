@@ -5,44 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Шахматы - Обучение</title>
+    <link rel="stylesheet" href="../tokens.css">
     <link rel="stylesheet" href="../nav.css">
+    <link rel="stylesheet" href="../game-page.css">
+    <link rel="stylesheet" href="../ui-feedback.css">
     <style>
         /* Существующие стили остаются без изменений */
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(to bottom, #0a192f, #0d1b2a);
-            color: #fff;
-        }
-
-        canvas {
-            display: block;
-            pointer-events: auto;
-        }
-
-        .axis-btn {
-            background: #4cc9f0;
-            border: none;
-            color: #0a192f;
-            padding: 8px 12px;
-            margin: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
-        }
-
-        .axis-btn:hover {
-            background: #7bdff9;
-            transform: scale(1.05);
-        }
-
-        .axis-btn.active {
-            background: #ff5722;
-            color: white;
-        }
-
         .return-btn {
             background: #4cc9f0;
             border: none;
@@ -80,110 +48,15 @@
             pointer-events: auto;
         }
 
-        #right-panel::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        #right-panel::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 4px;
-        }
-
-        #right-panel::-webkit-scrollbar-thumb {
-            background: #4cc9f0;
-            border-radius: 4px;
-        }
-
-        #right-panel::-webkit-scrollbar-thumb:hover {
-            background: #7bdff9;
-        }
-
-        .panel-section {
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 100, 200, 0.5);
-        }
-
+        /* Kept local: this page's headers aren't collapsible, so they
+           deliberately don't get game-page.css's pointer-cursor/flex
+           treatment for .panel-section h3 — only the color/spacing here. */
         .panel-section h3 {
             margin-top: 0;
             color: #4cc9f0;
             text-shadow: 0 0 5px #4cc9f0;
-        }
-
-        #game-info {
-            font-size: 16px;
-            text-align: center;
-        }
-
-        #game-status {
-            margin-top: 10px;
-            padding: 8px;
-            border-radius: 5px;
-            text-align: center;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .status-check {
-            background-color: rgba(255, 152, 0, 0.2);
-            color: #ff9800;
-            border: 1px solid #ff9800;
-        }
-
-        .status-checkmate {
-            background-color: rgba(244, 67, 54, 0.2);
-            color: #f44336;
-            border: 1px solid #f44336;
-            animation: pulse 1.5s infinite;
-        }
-
-        .buttons-row {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .color-picker-container {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .color-input-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .color-input-container label {
-            min-width: 80px;
-        }
-
-        .color-input {
-            width: 100%;
-            height: 30px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        @keyframes pulse {
-            0% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.7;
-            }
-
-            100% {
-                opacity: 1;
-            }
+            cursor: default;
+            display: block;
         }
 
         /* Стили для левой панели */
@@ -311,10 +184,36 @@
             justify-content: center;
             padding: 10px 0;
         }
+
+        #toggle-tutorial-panels {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            #left-panel,
+            #right-panel {
+                width: min(320px, 85vw);
+            }
+
+            #left-panel.hidden,
+            #right-panel.hidden {
+                display: none;
+            }
+
+            #toggle-tutorial-panels {
+                display: block;
+                position: fixed;
+                bottom: 16px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 20;
+            }
+        }
     </style>
 </head>
 
 <body>
+    <button id="toggle-tutorial-panels" class="game-btn">☰</button>
     <!-- Левая панель -->
     <div id="left-panel">
         <!-- Секция загрузки позиций -->
@@ -440,10 +339,11 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
 
     <!-- Подключаем ваш скрипт -->
+    <script src="../ui-feedback.js"></script>
     <script src="chess-engine.js"></script>
     <script src="graphics.js"></script>
     <script src="game.js"></script>
-    <script src="network.js"></script>
+    <script src="../network.js"></script>
     <script src="figures-tutorial.js"></script>
     <script src="../nav.js"></script>
     <script>Nav.init('figures-tutorial');</script>
@@ -470,6 +370,11 @@
             // Обработчик для кнопки возврата в игру
             document.getElementById('return-to-game').addEventListener('click', function () {
                 window.location.href = 'chess.html';
+            });
+
+            document.getElementById('toggle-tutorial-panels').addEventListener('click', () => {
+                document.getElementById('left-panel').classList.toggle('hidden');
+                document.getElementById('right-panel').classList.toggle('hidden');
             });
 
             // Обработчики для цветовых пикеров
@@ -616,7 +521,7 @@
 
                 } catch (error) {
                     console.error('Ошибка при загрузке позиции:', error);
-                    alert('Ошибка при загрузке позиции из файла: ' + file.name);
+                    UI.toast('Ошибка при загрузке позиции из файла: ' + file.name, 'error');
                 }
             };
             reader.readAsText(file);

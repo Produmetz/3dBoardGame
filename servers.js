@@ -61,7 +61,7 @@ class ServerBrowser {
             card.innerHTML = `
                 <div class="server-header">
                     <span class="server-name">
-                        <span class="status-dot" id="dot-${index}"></span>
+                        <span class="status-dot" id="dot-${index}" role="status" aria-label="Не в сети"></span>
                         ${this.escapeHtml(server.name)}
                     </span>
                     <button class="btn btn-danger btn-sm" onclick="browser.removeServer(${index})">✕</button>
@@ -169,8 +169,8 @@ class ServerBrowser {
         this.connectAndAuth(index, mode, nickname, password);
     }
 
-    connectAsGuest(index) {
-        const nickname = prompt('Введите ваш ник:');
+    async connectAsGuest(index) {
+        const nickname = await UI.prompt('Введите ваш ник:');
         if (!nickname) return;
         this.connectAndAuth(index, 'guest', nickname, null);
     }
@@ -237,8 +237,8 @@ class ServerBrowser {
         this.render();
     }
 
-    removeServer(index) {
-        if (confirm('Удалить сервер?')) {
+    async removeServer(index) {
+        if (await UI.confirm('Удалить сервер?')) {
             this.servers.splice(index, 1);
             delete this.connections[index];
             this.saveServers();
@@ -246,11 +246,11 @@ class ServerBrowser {
         }
     }
 
-    addServer() {
+    async addServer() {
         const name = document.getElementById('new-server-name').value.trim();
         const url = document.getElementById('new-server-url').value.trim();
         if (!name || !url) {
-            alert('Заполните название и адрес');
+            UI.toast('Заполните название и адрес', 'error');
             return;
         }
         this.servers.push({ name, url });
@@ -265,11 +265,15 @@ class ServerBrowser {
         try {
             const ws = new WebSocket(server.url.replace('0.0.0.0', 'localhost'));
             ws.onopen = () => {
-                document.getElementById(`dot-${index}`)?.classList.add('connected');
+                const dot = document.getElementById(`dot-${index}`);
+                dot?.classList.add('connected');
+                dot?.setAttribute('aria-label', 'В сети');
                 ws.close();
             };
             ws.onerror = () => {
-                document.getElementById(`dot-${index}`)?.classList.remove('connected');
+                const dot = document.getElementById(`dot-${index}`);
+                dot?.classList.remove('connected');
+                dot?.setAttribute('aria-label', 'Не в сети');
             };
         } catch(e) {}
     }

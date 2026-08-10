@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!window.chessGame?.isNetworkGame) {
                 window.chessGame?.undoMove();
             } else {
-                alert('В сетевом режиме используйте "Отмена хода"');
+                UI.toast('В сетевом режиме используйте "Отмена хода"', 'info');
             }
         },
         'cancel-undo': () => window.chessGame?.cancelUndoRequest(),
@@ -43,14 +43,9 @@ document.addEventListener('DOMContentLoaded', function () {
         'leave-room-btn': () => window.chessGame?.leaveRoom(),
         'offer-undo': () => window.chessGame?.offerUndo(),
         'send-chat-btn': () => window.chessGame?.sendChatMessage(),
-        'offer-draw': () => {
+        'resign-btn': async () => {
             if (window.chessGame?.isNetworkGame) {
-                alert('Предложение ничьей пока не реализовано');
-            }
-        },
-        'resign-btn': () => {
-            if (window.chessGame?.isNetworkGame) {
-                if (confirm('Вы уверены, что хотите сдаться?')) {
+                if (await UI.confirm('Вы уверены, что хотите сдаться?')) {
                     window.chessGame?.networkManager?.sendResign();
                 }
             }
@@ -68,6 +63,15 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         },
         'back-to-lobby-btn': () => {
+            if (window.chessGame?.isNetworkGame && window.chessGame?.networkManager) {
+                window.chessGame.networkManager.goBack();
+            } else {
+                window.location.href = '../index.html';
+            }
+        },
+        // Same destination as back-to-lobby-btn — this one lives inside the
+        // game-over modal, which needed its own id (both can't share one).
+        'result-back-to-lobby-btn': () => {
             if (window.chessGame?.isNetworkGame && window.chessGame?.networkManager) {
                 window.chessGame.networkManager.goBack();
             } else {

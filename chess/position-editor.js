@@ -291,7 +291,7 @@ class PositionEditor {
                 createAndFillBoardOnPole(ChessEngine.Pole);
                 console.log('Позиция загружена из текстового файла');
             } catch (error) {
-                alert('Ошибка при загрузке позиции: ' + error.message);
+                UI.toast('Ошибка при загрузке позиции: ' + error.message, 'error');
             }
         };
         reader.readAsText(file);

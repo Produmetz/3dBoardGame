@@ -101,7 +101,7 @@ class NetworkManager {
             };
         } catch (error) {
             console.error('Connection error:', error);
-            alert('Ошибка подключения к серверу');
+            UI.toast('Ошибка подключения к серверу', 'error');
         }
     }
 
@@ -149,7 +149,7 @@ class NetworkManager {
             };
         } catch (error) {
             console.error('Connection error:', error);
-            alert('Ошибка подключения к серверу');
+            UI.toast('Ошибка подключения к серверу', 'error');
         }
     }
 
@@ -198,7 +198,7 @@ class NetworkManager {
                 this.playerColor = data.color;
                 this.game.isNetworkGame = true;
                 if (data.boardX !== undefined) {
-                    this.game.setBoardParams(data.boardX, data.boardY, data.boardZ, data.komi);
+                    this.game.setBoardParams(data.boardX, data.boardY, data.boardZ, data.komi, data.ruleSet);
                 }
                 this.game.setMyTurn(data.isMyTurn);
                 this.game.showRoomInfo(
@@ -221,7 +221,7 @@ class NetworkManager {
                     this.isSpectator = true;
                 }
                 if (data.boardX !== undefined) {
-                    this.game.setBoardParams(data.boardX, data.boardY, data.boardZ, data.komi);
+                    this.game.setBoardParams(data.boardX, data.boardY, data.boardZ, data.komi, data.ruleSet);
                 }
                 this.game.setMyTurn(data.isMyTurn);
                 this.game.showRoomInfo(
@@ -292,8 +292,17 @@ class NetworkManager {
             case 'rematch_start':
                 this.game.handleRematchStart(data);
                 break;
+            case 'go_scoring_submitted':
+                this.game.handleGoScoringSubmitted?.(data);
+                break;
+            case 'go_scoring_mismatch':
+                this.game.handleGoScoringMismatch?.(data);
+                break;
+            case 'go_resumed':
+                this.game.handleGoResumed?.(data);
+                break;
             case 'error':
-                alert(data.message);
+                UI.toast(data.message, 'error');
                 break;
         }
     }
@@ -308,7 +317,7 @@ class NetworkManager {
         this.send({ type: 'list_rooms' });
     }
 
-    createRoom(roomName, password, isPublic, gameType, boardX, boardY, boardZ, komi) {
+    createRoom(roomName, password, isPublic, gameType, boardX, boardY, boardZ, komi, ruleSet) {
         this.send({
             type: 'create_room',
             roomName: roomName,
@@ -318,7 +327,8 @@ class NetworkManager {
             boardX: boardX,
             boardY: boardY,
             boardZ: boardZ,
-            komi: komi
+            komi: komi,
+            ruleSet: ruleSet
         });
     }
 
@@ -399,6 +409,17 @@ class NetworkManager {
 
     sendGameOver(winner) {
         this.send({ type: 'game_over', winner: winner || null });
+    }
+
+    sendGoSubmitScoring(deadStones) {
+        this.send({
+            type: 'go_submit_scoring',
+            deadStones: deadStones.map(([x, y, z]) => ({ x, y, z }))
+        });
+    }
+
+    sendGoResumePlay() {
+        this.send({ type: 'go_resume_play' });
     }
 
     disconnect() {

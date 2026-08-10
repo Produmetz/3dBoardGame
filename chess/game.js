@@ -263,11 +263,13 @@ class Game {
     makeMove(fromX, fromY, fromZ, toX, toY, toZ) {
         // Сохраняем информацию о ходе для возможной отмены
         const capturedFigure = ChessEngine.Pole[toX][toY][toZ];
+        const movedFigureRef = ChessEngine.Pole[fromX][fromY][fromZ];
         const moveInfo = {
             from: { x: fromX, y: fromY, z: fromZ },
             to: { x: toX, y: toY, z: toZ },
-            movedFigure: ChessEngine.Pole[fromX][fromY][fromZ],
-            capturedFigure: capturedFigure
+            movedFigure: movedFigureRef,
+            capturedFigure: capturedFigure,
+            movedFigureHadMoved: !!(movedFigureRef && movedFigureRef.hasMoved)
         };
 
         // Выполняем ход в шахматном движке
@@ -279,6 +281,15 @@ class Game {
         );
 
         if (moveResult.success) {
+            // Рокировка/взятие на проходе — доп. данные для корректной отмены хода
+            moveInfo.castling = moveResult.castling;
+            moveInfo.enPassantCapture = moveResult.enPassantCapture;
+            moveInfo.previousEnPassantTarget = moveResult.previousEnPassantTarget;
+            if (moveResult.castling) {
+                const { rookTo } = moveResult.castling;
+                moveInfo.rookFigure = ChessEngine.Pole[rookTo.x][rookTo.y][rookTo.z];
+            }
+
             // Сохраняем ход в историю
             this.moveHistory.push(moveInfo);
             // Отправляем ход противнику, если это сетевая игра
@@ -332,16 +343,38 @@ class Game {
         this.cancelBotSearch();
 
         const lastMove = this.moveHistory.pop();
-        const { from, to, movedFigure, capturedFigure } = lastMove;
+        const {
+            from, to, movedFigure, capturedFigure, movedFigureHadMoved,
+            castling, enPassantCapture, previousEnPassantTarget, rookFigure
+        } = lastMove;
 
-        // Восстанавливаем фигуру на исходной позиции
+        // Восстанавливаем фигуру на исходной позиции и её флаг "уже ходила"
         ChessEngine.Pole[from.x][from.y][from.z] = movedFigure;
+        if (movedFigure) movedFigure.hasMoved = movedFigureHadMoved;
 
-        // Восстанавливаем взятие фигуры, если было
+        // Восстанавливаем взятие фигуры, если было (обычное взятие на клетке назначения)
         if (capturedFigure) {
             ChessEngine.Pole[to.x][to.y][to.z] = capturedFigure;
         } else {
             ChessEngine.Pole[to.x][to.y][to.z] = null;
+        }
+
+        // Откатываем взятие на проходе — настоящая взятая пешка стояла не на
+        // клетке назначения, а на исходном z-слое ходившей пешки
+        if (enPassantCapture) {
+            ChessEngine.Pole[enPassantCapture.x][enPassantCapture.y][enPassantCapture.z] = enPassantCapture.figure;
+        }
+
+        // Откатываем рокировку — возвращаем ладью на исходную клетку и её флаг
+        if (castling) {
+            ChessEngine.Pole[castling.rookTo.x][castling.rookTo.y][castling.rookTo.z] = null;
+            ChessEngine.Pole[castling.rookFrom.x][castling.rookFrom.y][castling.rookFrom.z] = rookFigure;
+            if (rookFigure) rookFigure.hasMoved = false;
+        }
+
+        // Восстанавливаем цель взятия на проходе, актуальную до этого хода
+        if (typeof previousEnPassantTarget !== 'undefined') {
+            ChessEngine.SetEnPassantTarget(previousEnPassantTarget);
         }
 
         // Меняем текущего игрока
@@ -481,9 +514,9 @@ class Game {
                 this.changeColor('whiteFigure', settings.whiteFiguresColor);
                 this.changeColor('blackFigure', settings.blackFiguresColor);
 
-                alert('Настройки успешно загружены!');
+                UI.toast('Настройки успешно загружены!', 'success');
             } catch (error) {
-                alert('Ошибка при загрузке настроек: ' + error.message);
+                UI.toast('Ошибка при загрузке настроек: ' + error.message, 'error');
             }
         };
         reader.readAsText(file);
@@ -615,7 +648,7 @@ class Game {
                         }
                     }
                 } else {
-                    alert('Неизвестный формат файла');
+                    UI.toast('Неизвестный формат файла', 'error');
                     return;
                 }
 
@@ -624,9 +657,9 @@ class Game {
                 this.updateUI();
                 this.maybeBotMove();
 
-                alert('Игра успешно загружена!');
+                UI.toast('Игра успешно загружена!', 'success');
             } catch (error) {
-                alert('Ошибка при загрузке игры: ' + error.message);
+                UI.toast('Ошибка при загрузке игры: ' + error.message, 'error');
                 console.error(error);
             }
         };
@@ -639,7 +672,7 @@ class Game {
         const playerName = document.getElementById('player-name').value;
 
         if (!address || !playerName) {
-            alert('Заполните адрес сервера и ваше имя');
+            UI.toast('Заполните адрес сервера и ваше имя', 'error');
             return;
         }
 
@@ -673,7 +706,7 @@ class Game {
 
     confirmCreateRoom() {
         const name = document.getElementById('new-room-name').value.trim();
-        if (!name) return alert('Введите название комнаты');
+        if (!name) return UI.toast('Введите название комнаты', 'error');
         const pwd = document.getElementById('new-room-password').value;
         const isPublic = document.getElementById('new-room-public').checked;
         this.networkManager.createRoom(name, pwd || null, isPublic, 'chess'); // gameType = 'chess'
@@ -739,10 +772,10 @@ class Game {
         this.setMyTurn(true);
     }
 
-    handleUndoRequest() {
+    async handleUndoRequest() {
         this.pendingUndoRequest = true;
 
-        const agree = confirm('Противник предлагает отменить ход. Вы согласны?');
+        const agree = await UI.confirm('Противник предлагает отменить ход. Вы согласны?');
         this.networkManager.sendUndoResponse(agree);
 
         if (agree) {
@@ -756,7 +789,7 @@ class Game {
         if (accepted) {
             this.processUndo();
         } else {
-            alert('Противник отклонил предложение отменить ход.');
+            UI.toast('Противник отклонил предложение отменить ход.', 'info');
         }
     }
 
@@ -816,25 +849,25 @@ class Game {
         panel.style.display = 'block';
     }
 
-    handleDrawOffer(data) {
-        const accepted = confirm(`${data.from} предлагает ничью. Принять?`);
+    async handleDrawOffer(data) {
+        const accepted = await UI.confirm(`${data.from} предлагает ничью. Принять?`);
         this.networkManager.sendDrawResponse(accepted);
     }
 
     handleDrawResponse(data) {
         if (!data.accepted) {
-            alert(`${data.from} отклонил предложение ничьей.`);
+            UI.toast(`${data.from} отклонил предложение ничьей.`, 'info');
         }
     }
 
-    handleRematchOffer(data) {
-        const accepted = confirm(`${data.from} предлагает реванш. Принять?`);
+    async handleRematchOffer(data) {
+        const accepted = await UI.confirm(`${data.from} предлагает реванш. Принять?`);
         this.networkManager.sendRematchResponse(accepted);
     }
 
     handleRematchResponse(data) {
         if (!data.accepted) {
-            alert(`${data.from} отклонил предложение реванша.`);
+            UI.toast(`${data.from} отклонил предложение реванша.`, 'info');
             document.getElementById('rematch-status').style.display = 'none';
         }
     }

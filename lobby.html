@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Chess & Go – Лобби</title>
+    <link rel="stylesheet" href="tokens.css">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="lobby-styles.css">
     <link rel="stylesheet" href="nav.css">
+    <link rel="stylesheet" href="ui-feedback.css">
     <style>
         /* Tabs */
         .lobby-tabs {
@@ -366,6 +369,14 @@
                             <label for="room-komi">Коми</label>
                             <input type="number" id="room-komi" value="6.5" step="0.5" min="0" max="100">
                         </div>
+                        <div class="input-group">
+                            <label for="room-rule-set">Правила</label>
+                            <select id="room-rule-set">
+                                <option value="chinese">Китайские</option>
+                                <option value="japanese">Японские</option>
+                                <option value="korean">Корейские</option>
+                            </select>
+                        </div>
                     </div>
                     <div id="chess-options">
                         <div class="checkbox-group">
@@ -527,6 +538,7 @@
         </div>
     </div>
 
+    <script src="ui-feedback.js"></script>
     <script src="lobby.js"></script>
     <script src="nav.js"></script>
     <script>Nav.init('lobby');</script>

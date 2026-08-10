@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Chess & Go – Replay</title>
+    <link rel="stylesheet" href="tokens.css">
     <link rel="stylesheet" href="lobby-styles.css">
     <link rel="stylesheet" href="nav.css">
+    <link rel="stylesheet" href="ui-feedback.css">
     <style>
         body {
             overflow-y: auto;
@@ -89,10 +91,17 @@
             margin: 1rem 0;
         }
         .move-entry {
+            display: block;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+            background: none;
+            border: none;
+            border-bottom: 1px solid #1a2a3a;
+            cursor: pointer;
             padding: 0.3rem 0.5rem;
             font-size: 0.85rem;
             color: #9bb4d0;
-            border-bottom: 1px solid #1a2a3a;
         }
         .move-entry.active {
             background: rgba(76, 201, 240, 0.15);
@@ -111,6 +120,20 @@
         }
         .speed-control input[type="range"] {
             width: 120px;
+        }
+
+        @media (max-width: 480px) {
+            .replay-controls {
+                flex-wrap: wrap;
+            }
+
+            .speed-control {
+                flex-wrap: wrap;
+            }
+
+            .speed-control input[type="range"] {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -150,6 +173,7 @@
         </div>
     </div>
 
+    <script src="ui-feedback.js"></script>
     <script>
     class ReplayPlayer {
         constructor() {
@@ -254,7 +278,8 @@
             const listDiv = document.getElementById('move-list');
             listDiv.innerHTML = '';
             this.data.moves.forEach((move, index) => {
-                const div = document.createElement('div');
+                const div = document.createElement('button');
+                div.type = 'button';
                 div.className = 'move-entry';
                 if (this.data.gameType === 'chess') {
                     const from = move.from;

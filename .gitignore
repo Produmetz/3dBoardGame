@@ -5,6 +5,10 @@
 !.gitignore
 !index.html
 !styles.css
+!tokens.css
+!game-page.css
+!ui-feedback.js
+!ui-feedback.css
 !network.js
 !nav.js
 !nav.css

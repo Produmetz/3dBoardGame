@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Chess & Go – Выбор сервера</title>
+    <link rel="stylesheet" href="tokens.css">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="nav.css">
+    <link rel="stylesheet" href="ui-feedback.css">
     <style>
         .servers-grid {
             display: grid;
@@ -148,6 +150,28 @@
         .add-server-form.active {
             display: block;
         }
+
+        @media (max-width: 480px) {
+            .servers-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .server-card,
+            .add-server-panel {
+                padding: 1rem;
+            }
+
+            .server-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .server-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 <body>
@@ -179,6 +203,7 @@
         </div>
     </div>
 
+    <script src="ui-feedback.js"></script>
     <script src="servers.js"></script>
     <script src="nav.js"></script>
     <script>Nav.init('servers');</script>

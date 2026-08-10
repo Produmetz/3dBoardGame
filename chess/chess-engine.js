@@ -49,6 +49,9 @@ class Figure {
   constructor(name, color) {
     this.Color = color;
     this.Name = name;
+    // Used for castling eligibility (King/Rook) — set to true the moment a
+    // piece makes its first real move, via Move().
+    this.hasMoved = false;
   }
 
   getMaybeMove(LotMaybeMove) {
@@ -497,7 +500,22 @@ class BlackKing extends Figure {
 // Глобальная переменная для игрового поля
 let Pole = [];
 
+// Клетка, "пропущенная" пешкой при двойном шаге по оси z — доступна для
+// взятия на проходе только следующим ходом, затем сбрасывается в null.
+let EnPassantTarget = null;
+
+// Нужен для отмены хода (undo) — restore-функция извне не может присвоить
+// module-level переменной напрямую, только через сеттер.
+function SetEnPassantTarget(target) {
+  EnPassantTarget = target;
+}
+
+function GetEnPassantTarget() {
+  return EnPassantTarget;
+}
+
 function FillPole() {
+  EnPassantTarget = null;
   for (let x = 0; x < 6; x++) {
     Pole[x] = [];
     for (let y = 0; y < 6; y++) {
@@ -586,7 +604,8 @@ function MaybeMoves(x, y, z, Pole) {
         if ((x_1 < 6) && (y_1 < 6) && (z_1 < 8) && (x_1 > -1) && (y_1 > -1) && (z_1 > -1)) {
           if (((i == 9)) && (Pole[x_1][y_1][z_1] == null) && ((Pole[x_1][y_1][z_1 - 1] == null)) && (z == 1)) { MaybePositions[j] = MaybePosition; j++ }
           else if ((Pole[x_1][y_1][z_1] == null) && (i == 0)) { MaybePositions[j] = MaybePosition; j++ }
-          else if ((Pole[x_1][y_1][z_1] != null) && (Pole[x_1][y_1][z_1].Color == 'Black') && (i != 0) && (i != 9)) { MaybePositions[j] = MaybePosition; j++ };
+          else if ((Pole[x_1][y_1][z_1] != null) && (Pole[x_1][y_1][z_1].Color == 'Black') && (i != 0) && (i != 9)) { MaybePositions[j] = MaybePosition; j++ }
+          else if ((Pole[x_1][y_1][z_1] == null) && (i != 0) && (i != 9) && EnPassantTarget && (x_1 === EnPassantTarget[0]) && (y_1 === EnPassantTarget[1]) && (z_1 === EnPassantTarget[2])) { MaybePositions[j] = MaybePosition; j++ };
         };
       };
     };
@@ -599,6 +618,7 @@ function MaybeMoves(x, y, z, Pole) {
           if (((i == 9)) && (Pole[x_1][y_1][z_1] == null) && ((Pole[x_1][y_1][z_1 + 1] == null)) && (z == 6)) { MaybePositions[j] = MaybePosition; j++ }
           else if ((Pole[x_1][y_1][z_1] == null) && (i == 0)) { MaybePositions[j] = MaybePosition; j++ };
           if (((i != 0) || (i != 9)) && (Pole[x_1][y_1][z_1] != null) && (Pole[x_1][y_1][z_1].Color == 'White') && (i != 0) && (i != 9)) { MaybePositions[j] = MaybePosition; j++ };
+          if ((Pole[x_1][y_1][z_1] == null) && (i != 0) && (i != 9) && EnPassantTarget && (x_1 === EnPassantTarget[0]) && (y_1 === EnPassantTarget[1]) && (z_1 === EnPassantTarget[2])) { MaybePositions[j] = MaybePosition; j++ };
         };
       };
     };
@@ -779,8 +799,68 @@ function MaybeMoves(x, y, z, Pole) {
     return MaybePositions;
   } else { return false; };
 };
+// Диагональная рокировка: король и ладья ещё не двигались, путь по чистой
+// диагонали в плоскости XY свободен, король не стоит и не проходит под шахом.
+// Не добавляется в MaybeMoves (используется детектором атак) — рокировка не
+// является угрозой, только реальным ходом, доступным игроку.
+function getCastlingMoves(x, y, z, Pole) {
+  const king = Pole[x][y][z];
+  if (!king || king.Name !== 'King' || king.hasMoved) return [];
+  if (IsCheck(king.Color, Pole)) return [];
+
+  const diagDirs = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+  const results = [];
+
+  for (const [dx, dy] of diagDirs) {
+    let cx = x, cy = y;
+    let rookX = null, rookY = null;
+    while (true) {
+      cx += dx; cy += dy;
+      if (cx < 0 || cx > 5 || cy < 0 || cy > 5) break;
+      if (Pole[cx][cy][z] != null) {
+        if (Pole[cx][cy][z].Name === 'Rook' && Pole[cx][cy][z].Color === king.Color && !Pole[cx][cy][z].hasMoved) {
+          rookX = cx; rookY = cy;
+        }
+        break;
+      }
+    }
+    if (rookX === null) continue;
+
+    const passX = x + dx, passY = y + dy; // клетка, которую перепрыгивает король
+    const kingDestX = x + 2 * dx, kingDestY = y + 2 * dy;
+
+    if (Pole[passX][passY][z] != null) continue;
+
+    const destOccupant = Pole[kingDestX][kingDestY][z];
+    const destIsRook = (kingDestX === rookX) && (kingDestY === rookY);
+    if (destOccupant != null && !destIsRook) continue;
+
+    let ok = true;
+    let sx = rookX - dx, sy = rookY - dy;
+    while (!(sx === passX && sy === passY)) {
+      if (sx < 0 || sx > 5 || sy < 0 || sy > 5) { ok = false; break; }
+      if (Pole[sx][sy][z] != null) { ok = false; break; }
+      sx -= dx; sy -= dy;
+    }
+    if (!ok) continue;
+
+    // Король не должен проходить через атакованную клетку
+    const passBoard = CreateNextPole(Pole);
+    passBoard[x][y][z] = null;
+    passBoard[passX][passY][z] = king;
+    if (IsCheck(king.Color, passBoard)) continue;
+
+    results.push([kingDestX, kingDestY, z]);
+  }
+
+  return results;
+}
+
 function MaybeMovesWithCheck(x, y, z, Pole) {
   let MaybePositions = MaybeMoves(x, y, z, Pole);
+  if (Pole[x][y][z] && Pole[x][y][z].Name === 'King') {
+    MaybePositions = MaybePositions.concat(getCastlingMoves(x, y, z, Pole));
+  }
   let color = Pole[x][y][z].Color;
   let validMoves = [];
   for (let i = 0; i < MaybePositions.length; i++) {
@@ -966,27 +1046,81 @@ function FoundKing(Pole) {
 }
 
 function Move(x, y, z, x_1, y_1, z_1, Pole, ColorMove) {
-  if (ColorMove && (Pole[x][y][z].Color == 'White')) {
-    Pole[x_1][y_1][z_1] = Pole[x][y][z];
-    Pole[x][y][z] = null;
-    return {
-      success: true,
-      nextMove: 'Black',
-      board: Pole
-    };
-  } else if (!ColorMove && (Pole[x][y][z].Color == 'Black')) {
-    Pole[x_1][y_1][z_1] = Pole[x][y][z];
-    Pole[x][y][z] = null;
-    return {
-      success: true,
-      nextMove: 'White',
-      board: Pole
-    };
+  const movingPiece = Pole[x][y][z];
+  const colorMatches =
+    (ColorMove && movingPiece && movingPiece.Color == 'White') ||
+    (!ColorMove && movingPiece && movingPiece.Color == 'Black');
+
+  if (!colorMatches) {
+    return { success: false, message: 'Invalid move' };
+  }
+
+  const priorEnPassantTarget = EnPassantTarget;
+  let enPassantCapture = null;
+  let castling = null;
+
+  // Взятие на проходе: пешка идёт на пустую клетку, совпадающую с текущей
+  // целью взятия на проходе — снимаем настоящую взятую пешку (она стоит не
+  // на клетке назначения, а рядом, на исходном z-слое ходящей пешки).
+  if (
+    movingPiece.Name === 'Pawn' &&
+    Pole[x_1][y_1][z_1] == null &&
+    priorEnPassantTarget &&
+    x_1 === priorEnPassantTarget[0] && y_1 === priorEnPassantTarget[1] && z_1 === priorEnPassantTarget[2] &&
+    (x_1 !== x || y_1 !== y)
+  ) {
+    const capturedFigure = Pole[x_1][y_1][z];
+    if (capturedFigure) {
+      enPassantCapture = { x: x_1, y: y_1, z: z, figure: capturedFigure };
+      Pole[x_1][y_1][z] = null;
+    }
+  }
+
+  // Диагональная рокировка: король идёт на 2 клетки по диагонали из ещё не
+  // двигавшейся позиции — переставляем ближайшую в этом направлении (уже
+  // валидированную в getCastlingMoves) ладью на клетку, которую перепрыгнул король.
+  if (
+    movingPiece.Name === 'King' && !movingPiece.hasMoved &&
+    z === z_1 && Math.abs(x_1 - x) === 2 && Math.abs(y_1 - y) === 2
+  ) {
+    const dx = (x_1 - x) / 2;
+    const dy = (y_1 - y) / 2;
+    let cx = x, cy = y;
+    let rookX = null, rookY = null;
+    while (true) {
+      cx += dx; cy += dy;
+      if (cx < 0 || cx > 5 || cy < 0 || cy > 5) break;
+      if (Pole[cx][cy][z] != null) { rookX = cx; rookY = cy; break; }
+    }
+    if (rookX !== null) {
+      const rookPiece = Pole[rookX][rookY][z];
+      const rookToX = x + dx, rookToY = y + dy;
+      castling = { rookFrom: { x: rookX, y: rookY, z: z }, rookTo: { x: rookToX, y: rookToY, z: z } };
+      Pole[rookX][rookY][z] = null;
+      Pole[rookToX][rookToY][z] = rookPiece;
+      rookPiece.hasMoved = true;
+    }
+  }
+
+  Pole[x_1][y_1][z_1] = movingPiece;
+  Pole[x][y][z] = null;
+  movingPiece.hasMoved = true;
+
+  // Цель взятия на проходе доступна только следующим ходом сразу после
+  // двойного шага пешки по z — иначе сбрасывается.
+  if (movingPiece.Name === 'Pawn' && x === x_1 && y === y_1 && Math.abs(z_1 - z) === 2) {
+    EnPassantTarget = [x, y, (z + z_1) / 2];
+  } else {
+    EnPassantTarget = null;
   }
 
   return {
-    success: false,
-    message: 'Invalid move'
+    success: true,
+    nextMove: ColorMove ? 'Black' : 'White',
+    board: Pole,
+    castling: castling,
+    enPassantCapture: enPassantCapture,
+    previousEnPassantTarget: priorEnPassantTarget
   };
 }
 
@@ -1027,6 +1161,9 @@ window.ChessEngine = {
   IsCheck: IsCheck,
   FoundKing: FoundKing,
   MaybeMovesWithCheck: MaybeMovesWithCheck,
+  getCastlingMoves: getCastlingMoves,
+  SetEnPassantTarget: SetEnPassantTarget,
+  GetEnPassantTarget: GetEnPassantTarget,
   Move: Move,
   FillPole: FillPole,
   Figure: Figure,

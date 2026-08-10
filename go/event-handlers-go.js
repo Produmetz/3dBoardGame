@@ -36,12 +36,12 @@ document.addEventListener('DOMContentLoaded', function () {
         'send-chat-btn': () => window.goGame?.sendChatMessage(),
         'offer-draw': () => {
             if (window.goGame?.isNetworkGame) {
-                alert('Предложение ничьей пока не реализовано');
+                window.goGame?.networkManager?.sendDrawOffer();
             }
         },
-        'resign-btn': () => {
+        'resign-btn': async () => {
             if (window.goGame?.isNetworkGame) {
-                if (confirm('Вы уверены, что хотите сдаться?')) {
+                if (await UI.confirm('Вы уверены, что хотите сдаться?')) {
                     window.goGame?.networkManager?.sendResign();
                     window.goGame?.hideNetworkPanel();
                 }
@@ -49,9 +49,34 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.goGame?.resign();
             }
         },
-        'local-resign-btn': () => {
-            if (confirm('Вы уверены, что хотите сдаться?')) {
+        'local-resign-btn': async () => {
+            if (await UI.confirm('Вы уверены, что хотите сдаться?')) {
                 window.goGame?.resign();
+            }
+        },
+        'go-scoring-confirm-btn': () => window.goGame?.confirmScoring(),
+        'go-scoring-resume-btn': () => window.goGame?.resumeFromScoring(),
+        'rematch-btn': () => {
+            if (window.goGame?.isNetworkGame) {
+                document.getElementById('rematch-status').style.display = 'block';
+                document.getElementById('rematch-status').textContent = 'Ожидание ответа...';
+                window.goGame?.networkManager?.sendRematchOffer();
+            }
+        },
+        'back-to-lobby-btn': () => {
+            if (window.goGame?.isNetworkGame && window.goGame?.networkManager) {
+                window.goGame.networkManager.goBack();
+            } else {
+                window.location.href = '../index.html';
+            }
+        },
+        // Same destination as back-to-lobby-btn — this one lives inside the
+        // game-over modal, which needs its own id (both can't share one).
+        'result-back-to-lobby-btn': () => {
+            if (window.goGame?.isNetworkGame && window.goGame?.networkManager) {
+                window.goGame.networkManager.goBack();
+            } else {
+                window.location.href = '../index.html';
             }
         }
     };
@@ -91,10 +116,6 @@ document.addEventListener('DOMContentLoaded', function () {
             window.goGame?.sendChatMessage();
             this.value = '';
         }
-    });
-
-    document.getElementById('open-tutorial')?.addEventListener('click', function () {
-        window.location.href = 'go-tutorial.html';
     });
 
     const goBotEnabled = document.getElementById('go-bot-enabled');

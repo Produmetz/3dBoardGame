@@ -126,7 +126,7 @@ function getStoneAt(board, x, y, z) {
     return board.grid[idx];
 }
 
-function createAndFillBoardForGo(board) {
+function createAndFillBoardForGo(board, deadStoneKeys) {
     if (!board) return;
     clearBoard();
 
@@ -155,7 +155,14 @@ function createAndFillBoardForGo(board) {
                 if (stone !== GoEngine.Stone.EMPTY) {
                     const color = stone === GoEngine.Stone.WHITE ? ColorManager.colors.whiteFigureColor : ColorManager.colors.blackFigureColor;
                     const sphere = createSphere(color);
-                    sphere.scale.set(0.7, 0.7, 0.7);
+                    const isDead = deadStoneKeys && deadStoneKeys.has(`${x},${y},${z}`);
+                    if (isDead) {
+                        sphere.scale.set(0.5, 0.5, 0.5);
+                        sphere.material.transparent = true;
+                        sphere.material.opacity = 0.35;
+                    } else {
+                        sphere.scale.set(0.7, 0.7, 0.7);
+                    }
                     cell.add(sphere);
                 }
             }

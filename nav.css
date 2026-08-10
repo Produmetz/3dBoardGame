@@ -13,19 +13,19 @@
     padding: 0.5rem 1.5rem;
     background: rgba(10, 15, 26, 0.92);
     backdrop-filter: blur(8px);
-    border-bottom: 1px solid #2a3a4a;
+    border-bottom: 1px solid var(--color-border);
     font-size: 0.85rem;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: var(--font-family);
 }
 
 .nav-breadcrumb a {
-    color: #9bb4d0;
+    color: var(--color-text-secondary);
     text-decoration: none;
     transition: color 0.2s;
 }
 
 .nav-breadcrumb a:hover {
-    color: #4cc9f0;
+    color: var(--color-accent);
 }
 
 .nav-breadcrumb .nav-sep {
@@ -34,7 +34,7 @@
 }
 
 .nav-breadcrumb .nav-current {
-    color: #eef4ff;
+    color: var(--color-text);
     font-weight: 500;
 }
 
@@ -44,14 +44,14 @@
     top: 40px;
     left: 20px;
     z-index: 55;
-    background: #1e2a36;
-    border: 1px solid #2c3e4e;
-    color: #9bb4d0;
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
     padding: 0.4rem 0.9rem;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     font-size: 0.85rem;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: var(--font-family);
     text-decoration: none;
     transition: 0.2s;
 }
@@ -61,7 +61,7 @@ body:not(.nav-has-breadcrumb) .nav-back-btn {
 }
 
 .nav-back-btn:hover {
-    background: #2c4c6c;
+    background: var(--color-secondary-btn);
     color: white;
 }
 
@@ -78,22 +78,22 @@ body:not(.nav-has-breadcrumb) .nav-back-btn {
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: var(--font-family);
     display: none;
     pointer-events: none;
 }
 
 .nav-mode-badge.mode-local {
     display: block;
-    background: #1e2a36;
-    color: #9bb4d0;
-    border: 1px solid #2c3e4e;
+    background: var(--color-surface-raised);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
 }
 
 .nav-mode-badge.mode-online {
     display: block;
     background: rgba(76, 201, 240, 0.15);
-    color: #4cc9f0;
+    color: var(--color-accent);
     border: 1px solid rgba(76, 201, 240, 0.3);
     animation: nav-pulse 3s ease-in-out infinite;
 }

@@ -5,7 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Генератор шахматных позиций</title>
+    <link rel="stylesheet" href="../tokens.css">
     <link rel="stylesheet" href="../nav.css">
+    <link rel="stylesheet" href="../ui-feedback.css">
     <style>
         * {
             box-sizing: border-box;
@@ -96,13 +98,19 @@
         }
 
         .figure-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+            color: inherit;
+            border: none;
+            border-left: 3px solid transparent;
             padding: 10px 12px;
             background: rgba(20, 40, 60, 0.5);
             border-radius: 6px;
             margin-bottom: 6px;
             cursor: pointer;
             transition: all 0.3s;
-            border-left: 3px solid transparent;
             font-size: 0.9rem;
         }
 
@@ -335,10 +343,39 @@
             font-size: 0.9rem;
             line-height: 1.4;
         }
+
+        #toggle-editor-panels {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            #left-panel {
+                width: min(250px, 85vw);
+            }
+
+            #right-panel {
+                width: min(280px, 85vw);
+            }
+
+            #left-panel.hidden,
+            #right-panel.hidden {
+                display: none;
+            }
+
+            #toggle-editor-panels {
+                display: block;
+                position: fixed;
+                bottom: 16px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 20;
+            }
+        }
     </style>
 </head>
 
 <body>
+    <button id="toggle-editor-panels" class="game-btn">☰</button>
     <!-- Верхняя плашка -->
     <header class="header">
         <button class="back-btn" onclick="window.location.href='chess.html'">
@@ -355,14 +392,14 @@
     <div id="left-panel">
         <div class="figure-list">
             <h3>Фигуры</h3>
-            <div class="figure-item" data-figure="Pawn">Пешка</div>
-            <div class="figure-item" data-figure="Rook">Ладья</div>
-            <div class="figure-item" data-figure="Knight">Конь</div>
-            <div class="figure-item" data-figure="Bishop">Слон</div>
-            <div class="figure-item" data-figure="Triort">Триорт</div>
-            <div class="figure-item" data-figure="Queen">Ферзь</div>
-            <div class="figure-item" data-figure="King">Король</div>
-            <div class="figure-item" data-figure="Eraser">Ластик</div>
+            <button type="button" class="figure-item" data-figure="Pawn">Пешка</button>
+            <button type="button" class="figure-item" data-figure="Rook">Ладья</button>
+            <button type="button" class="figure-item" data-figure="Knight">Конь</button>
+            <button type="button" class="figure-item" data-figure="Bishop">Слон</button>
+            <button type="button" class="figure-item" data-figure="Triort">Триорт</button>
+            <button type="button" class="figure-item" data-figure="Queen">Ферзь</button>
+            <button type="button" class="figure-item" data-figure="King">Король</button>
+            <button type="button" class="figure-item" data-figure="Eraser">Ластик</button>
         </div>
 
         <div class="color-selector">
@@ -421,11 +458,18 @@
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="../ui-feedback.js"></script>
     <script src="chess-engine.js"></script>
     <script src="graphics.js"></script>
     <script src="position-editor.js"></script>
     <script src="../nav.js"></script>
-    <script>Nav.init('position-editor');</script>
+    <script>
+        Nav.init('position-editor');
+        document.getElementById('toggle-editor-panels').addEventListener('click', () => {
+            document.getElementById('left-panel').classList.toggle('hidden');
+            document.getElementById('right-panel').classList.toggle('hidden');
+        });
+    </script>
 </body>
 
 </html>
