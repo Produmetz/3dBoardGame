@@ -8,7 +8,10 @@ camera.position.set(15, 15, 15);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 const canvas = renderer.domElement;
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
+// Ограничиваем pixelRatio — на телефонах/hi-DPI мониторах devicePixelRatio может
+// быть 3+, что при полупрозрачной 3D-решётке клеток резко умножает стоимость
+// заливки пикселей. Выше 2 разница в чёткости незаметна, а FPS проседает сильно.
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
 // Добавление управления камерой
@@ -103,11 +106,39 @@ const ColorManager = {
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
+// Общие геометрии фигур и клеток. Форма у всех фигур одного типа одинаковая —
+// meняется только material (для подсветки, перекраски темы, шаха короля),
+// поэтому геометрию безопасно переиспользовать между всеми экземплярами вместо
+// создания нового буфера на каждую фигуру/клетку. Сегменты у круглых форм также
+// снижены — на объектах такого размера разница незаметна, а треугольников заметно
+// меньше.
+const cellGeometry = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+const sphereGeometry = new THREE.SphereGeometry(0.45, 20, 20);
+const cubeFigureGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.6);
+const coneGeometry = new THREE.ConeGeometry(0.4, 1, 20);
+const cylinderGeometry = new THREE.CylinderGeometry(0.4, 0.4, 1, 20);
+const torusGeometry = new THREE.TorusGeometry(0.35, 0.16, 12, 48);
+const pyramidGeometry = new THREE.ConeGeometry(0.5, 1, 4);
+const starConeGeometry = new THREE.ConeGeometry(0.5, 1, 5);
+const torusKnotGeometry = new THREE.TorusKnotGeometry(0.4, 0.15, 64, 12);
+const tetrahedronGeometry = new THREE.TetrahedronGeometry(0.8);
+const octahedronGeometry = new THREE.OctahedronGeometry(0.6);
+const dodecahedronGeometry = new THREE.DodecahedronGeometry(0.6);
 
+// Убирает и уничтожает материалы (не геометрию — она общая и живёт всё время
+// страницы) всех дочерних мешей клетки. Вызывается при замене/удалении фигур,
+// чтобы старые материалы не копились в GPU-памяти на каждом ходу/сбросе доски.
+function disposeCellContents(cell) {
+    while (cell.children.length > 0) {
+        const child = cell.children[0];
+        cell.remove(child);
+        child.traverse((obj) => obj.material?.dispose());
+    }
+}
 
 // Функции для создания фигур (внутренние)
 function createSphere(color) {
-    const geometry = new THREE.SphereGeometry(0.45, 32, 32);
+    const geometry = sphereGeometry;
     const material = new THREE.MeshPhongMaterial({
         color: color,
         shininess: 800, // Увеличьте значение для более концентрированного блеска
@@ -118,7 +149,7 @@ function createSphere(color) {
     return new THREE.Mesh(geometry, material);
 }
 function createCube(color) {
-    const geometry = new THREE.BoxGeometry(0.6, 0.8, 0.6);
+    const geometry = cubeFigureGeometry;
     const material = new THREE.MeshPhongMaterial({
         color: color,
         shininess: 800, // Увеличьте значение для более концентрированного блеска
@@ -129,7 +160,7 @@ function createCube(color) {
     return new THREE.Mesh(geometry, material);
 }
 function createCone(color) {
-    const geometry = new THREE.ConeGeometry(0.4, 1, 32);
+    const geometry = coneGeometry;
     const material = new THREE.MeshPhongMaterial({
         color: color,
         shininess: 800, // Увеличьте значение для более концентрированного блеска
@@ -140,7 +171,7 @@ function createCone(color) {
     return new THREE.Mesh(geometry, material);
 }
 function createCylinder(color) {
-    const geometry = new THREE.CylinderGeometry(0.4, 0.4, 1, 32);
+    const geometry = cylinderGeometry;
     const material = new THREE.MeshPhongMaterial({
         color: color,
         shininess: 100,
@@ -149,7 +180,7 @@ function createCylinder(color) {
     return new THREE.Mesh(geometry, material);
 }
 function createTorus(color) {
-    const geometry = new THREE.TorusGeometry(0.35, 0.16, 15, 100);
+    const geometry = torusGeometry;
     const material = new THREE.MeshPhongMaterial({
         color: color,
         shininess: 800, // Увеличьте значение для более концентрированного блеска
@@ -160,7 +191,7 @@ function createTorus(color) {
     return new THREE.Mesh(geometry, material);
 }
 function createPyramid(color) {
-    const geometry = new THREE.ConeGeometry(0.5, 1, 4);
+    const geometry = pyramidGeometry;
     const material = new THREE.MeshPhongMaterial({
         color: color,
         shininess: 100,
@@ -178,16 +209,13 @@ function createStar(color) {
         specular: 0x111111
     });
 
-    // Создаем два конуса для формирования звезды
-    const cone1 = new THREE.ConeGeometry(0.5, 1, 5);
-    const cone2 = new THREE.ConeGeometry(0.5, 1, 5);
-
-    // Первый конус (основание)
-    const mesh1 = new THREE.Mesh(cone1, starMaterial);
+    // Создаем два конуса для формирования звезды (общая геометрия — оба конуса
+    // одинаковой формы, различается только поворот)
+    const mesh1 = new THREE.Mesh(starConeGeometry, starMaterial);
     mesh1.rotation.x = Math.PI; // Переворачиваем конус
 
     // Второй конус (повернут на 36 градусов для формирования лучей)
-    const mesh2 = new THREE.Mesh(cone2, starMaterial);
+    const mesh2 = new THREE.Mesh(starConeGeometry, starMaterial);
     mesh2.rotation.x = Math.PI;
     mesh2.rotation.y = Math.PI / 5; // 36 градусов
 
@@ -197,7 +225,7 @@ function createStar(color) {
     return group;
 }
 function createTorusKnot(color) {
-    const geometry = new THREE.TorusKnotGeometry(0.4, 0.15, 100, 16);
+    const geometry = torusKnotGeometry;
     const material = new THREE.MeshPhongMaterial({
         color: color,
         shininess: 100,
@@ -206,7 +234,7 @@ function createTorusKnot(color) {
     return new THREE.Mesh(geometry, material);
 }
 function createTetrahedron(color) {
-    const geometry = new THREE.TetrahedronGeometry(0.8);
+    const geometry = tetrahedronGeometry;
     const material = new THREE.MeshPhongMaterial({
         color: color,
         shininess: 800, // Увеличьте значение для более концентрированного блеска
@@ -217,7 +245,7 @@ function createTetrahedron(color) {
     return new THREE.Mesh(geometry, material);
 }
 function createOctahedron(color) {
-    const geometry = new THREE.OctahedronGeometry(0.6);
+    const geometry = octahedronGeometry;
     const material = new THREE.MeshPhongMaterial({
         color: color,
         shininess: 800, // Увеличьте значение для более концентрированного блеска
@@ -243,7 +271,7 @@ function createRandomFigure() {
 }
 
 function createDodecahedron(color) {
-    const geometry = new THREE.DodecahedronGeometry(0.6);
+    const geometry = dodecahedronGeometry;
     const material = new THREE.MeshPhongMaterial({
         color: color,
         shininess: 800, // Увеличьте значение для более концентрированного блеска
@@ -254,8 +282,6 @@ function createDodecahedron(color) {
     return new THREE.Mesh(geometry, material);
 }
 function createCellOfBoard(x, y, z, i, j, k) {
-    const cubeSize = 1.5;
-    const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
     const isEvenPosition = (i + j + k) % 2 === 0;
     const cubeBaseColor = isEvenPosition ?
         ColorManager.colors.boardColor1 :
@@ -269,7 +295,7 @@ function createCellOfBoard(x, y, z, i, j, k) {
         specular: 0x111111
     });
 
-    const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+    const cube = new THREE.Mesh(cellGeometry, cubeMaterial);
     cube.position.set(x, y, z);
     cube.userData.gridPosition = { i, j, k };
 
@@ -298,9 +324,7 @@ function createAndFillBoardOnPole(pole) {
                 } else {
                     cubeObjects[x][y][z] = createCellOfBoard(posX, posY, posZ, x, y, z);
                 }
-                while (cubeObjects[x][y][z].children.length > 0) {
-                    cubeObjects[x][y][z].remove(cubeObjects[x][y][z].children[0]);
-                }
+                disposeCellContents(cubeObjects[x][y][z]);
 
                 if (figure) {
                     let figureMesh;
@@ -481,10 +505,8 @@ function drawAfterMove(x1, y1, z1, x2, y2, z2) {
     const source = cubeObjects[x1][y1][z1];
     const target = cubeObjects[x2][y2][z2];
 
-    // Полностью очищаем целевую ячейку (удаляем все дочерние объекты)
-    while (target.children.length > 0) {
-        target.remove(target.children[0]);
-    }
+    // Полностью очищаем целевую ячейку (удаляем и уничтожаем материал взятой фигуры)
+    disposeCellContents(target);
 
     // Перемещаем всех детей из исходной ячейки в целевую
     while (source.children.length > 0) {

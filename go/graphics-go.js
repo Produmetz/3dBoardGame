@@ -10,7 +10,9 @@ camera.position.set(15, 15, 15);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 const canvas = renderer.domElement;
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
+// Ограничиваем pixelRatio — см. пояснение в chess/graphics.js. Особенно важно
+// здесь: доска Го может быть до 10x10x10 = 1000 полупрозрачных клеток.
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -73,8 +75,15 @@ const ColorManager = {
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
+// Общие геометрии — см. пояснение в chess/graphics.js. Здесь особенно важно:
+// createAndFillBoardForGo пересоздаёт ВСЮ доску (до 1000 клеток) после каждого
+// хода, так что переиспользование геометрии и очистка материалов старых мешей
+// (см. clearBoard) экономят как GPU-память, так и время на каждом ходу.
+const cellGeometry = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+const stoneGeometry = new THREE.SphereGeometry(0.45, 20, 20);
+
 function createSphere(color) {
-    const geometry = new THREE.SphereGeometry(0.45, 32, 32);
+    const geometry = stoneGeometry;
     const material = new THREE.MeshPhongMaterial({
         color: color,
         shininess: 800,
@@ -86,8 +95,6 @@ function createSphere(color) {
 }
 
 function createCellOfBoard(x, y, z, i, j, k) {
-    const cubeSize = 1.5;
-    const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
     const isEvenPosition = (i + j + k) % 2 === 0;
     const cubeBaseColor = isEvenPosition ? ColorManager.colors.boardColor1 : ColorManager.colors.boardColor2;
 
@@ -99,7 +106,7 @@ function createCellOfBoard(x, y, z, i, j, k) {
         specular: 0x111111
     });
 
-    const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+    const cube = new THREE.Mesh(cellGeometry, cubeMaterial);
     cube.position.set(x, y, z);
     cube.userData.gridPosition = { i, j, k };
 
@@ -107,11 +114,21 @@ function createCellOfBoard(x, y, z, i, j, k) {
     return cube;
 }
 
+// Уничтожает материалы клетки и её камня (геометрия общая — не трогаем).
+// Без этого каждый ход/сброс доски оставлял в GPU-памяти материалы всех
+// клеток и камней предыдущего состояния — на большой доске Го это быстро
+// накапливается за партию.
+function disposeCell(cell) {
+    cell.material?.dispose();
+    cell.children.forEach((child) => child.material?.dispose());
+}
+
 function clearBoard() {
     for (let x = 0; x < cubeObjects.length; x++) {
         for (let y = 0; y < cubeObjects[x]?.length; y++) {
             for (let z = 0; z < cubeObjects[x][y]?.length; z++) {
                 if (cubeObjects[x][y][z]) {
+                    disposeCell(cubeObjects[x][y][z]);
                     scene.remove(cubeObjects[x][y][z]);
                 }
             }
