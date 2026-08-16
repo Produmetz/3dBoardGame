@@ -35,11 +35,36 @@ class Game {
         // Добавляем обработчики событий
         this.setupEventListeners();
 
+        // Настройка бота из query-параметров (?bot=1&color=White|Black&depth=1-5),
+        // проставленных модалкой "Против компьютера" на главной странице.
+        this.applyBotConfigFromUrl();
+
         // Запускаем анимацию
         animate();
 
         console.log('Игра началась! Ходят ' + this.currentPlayer);
         this.updateUI();
+    }
+
+    applyBotConfigFromUrl() {
+        if (this.isNetworkGame) return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('bot') !== '1') return;
+
+        const color = params.get('color');
+        const depth = params.get('depth');
+
+        const enabledInput = document.getElementById('bot-enabled');
+        if (enabledInput) enabledInput.checked = true;
+
+        if (color === 'White' || color === 'Black') {
+            const colorInput = document.getElementById('bot-color');
+            if (colorInput) colorInput.value = color;
+        }
+
+        this.setBotEnabled(true);
+        if (color === 'White' || color === 'Black') this.setBotColor(color);
+        if (depth) this.setBotDepth(depth);
     }
 
     resetToStandart() {

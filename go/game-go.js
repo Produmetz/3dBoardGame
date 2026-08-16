@@ -31,8 +31,32 @@ class GoGame {
     init() {
         this.resetGame();
         this.setupEventListeners();
+        // Настройка бота из query-параметров (?bot=1&color=Black|White&strength=1-5),
+        // проставленных модалкой "Против компьютера" на главной странице.
+        this.applyBotConfigFromUrl();
         console.log('Игра Го началась! Ходят чёрные');
         this.updateUI();
+    }
+
+    applyBotConfigFromUrl() {
+        if (this.isNetworkGame) return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('bot') !== '1') return;
+
+        const color = params.get('color');
+        const strength = params.get('strength');
+
+        const enabledInput = document.getElementById('go-bot-enabled');
+        if (enabledInput) enabledInput.checked = true;
+
+        if (color === 'White' || color === 'Black') {
+            const colorInput = document.getElementById('go-bot-color');
+            if (colorInput) colorInput.value = color;
+        }
+
+        this.setBotEnabled(true);
+        if (color === 'White' || color === 'Black') this.setBotColor(color);
+        if (strength) this.setBotStrength(strength);
     }
 
     resetGame() {

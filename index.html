@@ -8,82 +8,6 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="ui-feedback.css">
     <style>
-        .mode-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 2rem;
-            justify-content: center;
-            margin: 3rem 0;
-        }
-
-        .mode-card {
-            background: rgba(15, 25, 45, 0.85);
-            backdrop-filter: blur(6px);
-            border-radius: 1.5rem;
-            overflow: hidden;
-            width: 340px;
-            transition: transform 0.2s ease, box-shadow 0.2s;
-            border: 1px solid #2a3a4a;
-            text-decoration: none;
-            color: inherit;
-            display: flex;
-            flex-direction: column;
-            cursor: pointer;
-        }
-
-        .mode-card:hover {
-            transform: translateY(-6px);
-            border-color: #4a6a8a;
-            box-shadow: 0 12px 20px -8px rgba(0,0,0,0.4);
-        }
-
-        .mode-icon {
-            background: #0e1622;
-            text-align: center;
-            padding: 2rem 0 1rem;
-            font-size: 4rem;
-            border-bottom: 1px solid #2a3a4a;
-        }
-
-        .mode-content {
-            padding: 1.5rem;
-            text-align: center;
-            flex: 1;
-        }
-
-        .mode-card h2 {
-            font-size: 1.8rem;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-            color: #cce6ff;
-        }
-
-        .mode-card p {
-            color: #b0c4de;
-            font-size: 0.9rem;
-            margin: 0.75rem 0;
-            line-height: 1.4;
-        }
-
-        .play-btn {
-            background: #2c4c6c;
-            border: none;
-            color: white;
-            font-weight: normal;
-            padding: 0.6rem 1.5rem;
-            border-radius: 30px;
-            margin-top: 1rem;
-            display: inline-block;
-            transition: 0.2s;
-            font-size: 0.95rem;
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        .mode-card:hover .play-btn {
-            background: #3e6a8c;
-        }
-
         .lang-switch {
             position: absolute;
             top: 0;
@@ -116,6 +40,161 @@
             color: #eef4ff;
         }
 
+        #subtitle {
+            text-align: center;
+            color: var(--color-text-secondary);
+            margin: 0.5rem 0 2rem;
+            font-size: 0.95rem;
+        }
+
+        /* Game switcher — same pill pattern as .lang-switch, just centered and bigger */
+        .game-switch {
+            display: flex;
+            justify-content: center;
+            gap: 0.3rem;
+            background: #1e2a36;
+            border-radius: 30px;
+            padding: 0.3rem;
+            width: fit-content;
+            margin: 0 auto 2rem;
+        }
+
+        .game-switch-btn {
+            background: transparent;
+            border: none;
+            color: #9bb4d0;
+            cursor: pointer;
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            transition: 0.2s;
+        }
+
+        .game-switch-btn.active {
+            background: #2c4c6c;
+            color: white;
+        }
+
+        .game-switch-btn:hover:not(.active) {
+            background: #2a3a4a;
+            color: #eef4ff;
+        }
+
+        .mode-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            margin: 0 0 3rem;
+        }
+
+        .mode-card {
+            background: rgba(15, 25, 45, 0.85);
+            backdrop-filter: blur(6px);
+            border-radius: 1.5rem;
+            overflow: hidden;
+            width: 300px;
+            transition: transform 0.2s ease, box-shadow 0.2s;
+            border: 1px solid #2a3a4a;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            font: inherit;
+            text-align: inherit;
+            padding: 0;
+        }
+
+        .mode-card:hover {
+            transform: translateY(-6px);
+            border-color: #4a6a8a;
+            box-shadow: 0 12px 20px -8px rgba(0,0,0,0.4);
+        }
+
+        .mode-icon {
+            background: #0e1622;
+            text-align: center;
+            padding: 2rem 0 1rem;
+            font-size: 4rem;
+            border-bottom: 1px solid #2a3a4a;
+        }
+
+        .mode-content {
+            padding: 1.5rem;
+            text-align: center;
+            flex: 1;
+        }
+
+        .mode-card h2 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #cce6ff;
+        }
+
+        .mode-card p {
+            color: #b0c4de;
+            font-size: 0.85rem;
+            margin: 0.75rem 0;
+            line-height: 1.4;
+        }
+
+        .play-btn {
+            background: #2c4c6c;
+            border: none;
+            color: white;
+            font-weight: normal;
+            padding: 0.6rem 1.5rem;
+            border-radius: 30px;
+            margin-top: 1rem;
+            display: inline-block;
+            transition: 0.2s;
+            font-size: 0.95rem;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .mode-card:hover .play-btn {
+            background: #3e6a8c;
+        }
+
+        /* Bot setup modal extras — color toggle mirrors the game-switch/lang-switch pill pattern */
+        .color-toggle {
+            display: flex;
+            gap: 0.3rem;
+            background: #1e2a36;
+            border-radius: 30px;
+            padding: 0.3rem;
+        }
+
+        .color-toggle-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #9bb4d0;
+            cursor: pointer;
+            padding: 0.5rem 0.5rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+
+        .color-toggle-btn.active {
+            background: #2c4c6c;
+            color: white;
+        }
+
+        .color-toggle-btn:hover:not(.active) {
+            background: #2a3a4a;
+            color: #eef4ff;
+        }
+
+        #difficulty-slider {
+            width: 100%;
+            accent-color: var(--color-accent);
+        }
+
         @media (max-width: 750px) {
             .mode-grid {
                 gap: 1.2rem;
@@ -128,6 +207,14 @@
         @media (max-width: 480px) {
             .mode-card {
                 width: 100%;
+            }
+            .game-switch {
+                width: 100%;
+            }
+            .game-switch-btn {
+                flex: 1;
+                padding: 0.5rem 0.5rem;
+                text-align: center;
             }
         }
     </style>
@@ -142,11 +229,27 @@
             <h1 id="title-main">3D Chess & Go</h1>
         </div>
 
+        <p id="subtitle">Выберите игру и способ игры</p>
+
+        <div class="game-switch" id="game-switch">
+            <button class="game-switch-btn active" data-game="chess">♞ <span id="switch-chess">Шахматы</span></button>
+            <button class="game-switch-btn" data-game="go">⚫ <span id="switch-go">Го</span></button>
+        </div>
+
         <div class="mode-grid">
-            <a href="chess/chess.html" class="mode-card" id="local-card">
-                <div class="mode-icon">♜ ⚫</div>
+            <button class="mode-card" id="mode-bot" type="button">
+                <div class="mode-icon">🤖</div>
                 <div class="mode-content">
-                    <h2 id="local-title">Локальная игра</h2>
+                    <h2 id="bot-title">Против компьютера</h2>
+                    <p id="bot-desc">Выберите цвет и сложность — и сразу в игру.</p>
+                    <div class="play-btn"><span id="bot-play">▶ Играть</span></div>
+                </div>
+            </button>
+
+            <a href="chess/chess.html" class="mode-card" id="local-card">
+                <div class="mode-icon">🧑‍🤝‍🧑</div>
+                <div class="mode-content">
+                    <h2 id="local-title">Локальная игра вдвоём</h2>
                     <p id="local-desc">Играйте на одном компьютере с другом. Без регистрации, без серверов.</p>
                     <div class="play-btn" id="local-play">▶ Начать игру</div>
                 </div>
@@ -155,7 +258,7 @@
             <a href="servers.html" class="mode-card" id="online-card">
                 <div class="mode-icon">🌐</div>
                 <div class="mode-content">
-                    <h2 id="online-title">Онлайн игра</h2>
+                    <h2 id="online-title">Играть онлайн</h2>
                     <p id="online-desc">Подключитесь к серверу, найдите соперника, играйте по рейтингу.</p>
                     <div class="play-btn" id="online-play">▶ Выбрать сервер</div>
                 </div>
@@ -167,42 +270,116 @@
         </footer>
     </div>
 
+    <!-- Bot setup modal -->
+    <div class="modal-overlay" id="bot-modal">
+        <div class="modal">
+            <h3 id="bot-modal-title">Против компьютера</h3>
+            <div class="input-group">
+                <label id="color-label">Ваш цвет</label>
+                <div class="color-toggle" id="color-toggle">
+                    <button type="button" class="color-toggle-btn" data-color="Black">⚫ <span id="color-black">Чёрные</span></button>
+                    <button type="button" class="color-toggle-btn active" data-color="random">🎲 <span id="color-random">Случайно</span></button>
+                    <button type="button" class="color-toggle-btn" data-color="White">⚪ <span id="color-white">Белые</span></button>
+                </div>
+            </div>
+            <div class="input-group">
+                <label><span id="difficulty-label">Сложность</span>: <span id="difficulty-value">3</span></label>
+                <input type="range" id="difficulty-slider" min="1" max="5" value="3">
+            </div>
+            <div class="btn-group">
+                <button id="bot-modal-play" class="btn btn-primary" style="flex:1; justify-content:center;">
+                    <span id="bot-modal-play-label">▶ Играть</span>
+                </button>
+                <button id="bot-modal-cancel" class="btn btn-secondary">
+                    <span id="bot-cancel-label">Отмена</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="ui-feedback.js"></script>
     <script>
         const translations = {
             en: {
                 title_main: "3D Chess & Go",
-                local_title: "Local Game",
+                subtitle: "Choose a game and how to play",
+                switch_chess: "Chess",
+                switch_go: "Go",
+                bot_title: "Against the Computer",
+                bot_desc: "Pick your color and difficulty — then straight into the game.",
+                bot_play: "▶ Play",
+                local_title: "Local Game (Pass & Play)",
                 local_desc: "Play on one computer with a friend. No registration, no servers.",
                 local_play: "▶ Start Game",
-                online_title: "Online Game",
+                online_title: "Play Online",
                 online_desc: "Connect to a server, find an opponent, play ranked games.",
-                online_play: "▶ Choose Server"
+                online_play: "▶ Choose Server",
+                bot_modal_title_chess: "Against the Computer — Chess",
+                bot_modal_title_go: "Against the Computer — Go",
+                color_label: "Your color",
+                color_black: "Black",
+                color_random: "Random",
+                color_white: "White",
+                difficulty_label: "Difficulty",
+                bot_modal_play: "▶ Play",
+                bot_cancel: "Cancel"
             },
             ru: {
                 title_main: "3D Шахматы и Го",
-                local_title: "Локальная игра",
+                subtitle: "Выберите игру и способ игры",
+                switch_chess: "Шахматы",
+                switch_go: "Го",
+                bot_title: "Против компьютера",
+                bot_desc: "Выберите цвет и сложность — и сразу в игру.",
+                bot_play: "▶ Играть",
+                local_title: "Локальная игра вдвоём",
                 local_desc: "Играйте на одном компьютере с другом. Без регистрации, без серверов.",
                 local_play: "▶ Начать игру",
-                online_title: "Онлайн игра",
+                online_title: "Играть онлайн",
                 online_desc: "Подключитесь к серверу, найдите соперника, играйте по рейтингу.",
-                online_play: "▶ Выбрать сервер"
+                online_play: "▶ Выбрать сервер",
+                bot_modal_title_chess: "Против компьютера — Шахматы",
+                bot_modal_title_go: "Против компьютера — Го",
+                color_label: "Ваш цвет",
+                color_black: "Чёрные",
+                color_random: "Случайно",
+                color_white: "Белые",
+                difficulty_label: "Сложность",
+                bot_modal_play: "▶ Играть",
+                bot_cancel: "Отмена"
             }
         };
 
+        let currentLang = 'ru';
+
         function setLanguage(lang) {
             if (!translations[lang]) return;
+            currentLang = lang;
             const t = translations[lang];
             document.getElementById('title-main').innerText = t.title_main;
+            document.getElementById('subtitle').innerText = t.subtitle;
+            document.getElementById('switch-chess').innerText = t.switch_chess;
+            document.getElementById('switch-go').innerText = t.switch_go;
+            document.getElementById('bot-title').innerText = t.bot_title;
+            document.getElementById('bot-desc').innerText = t.bot_desc;
+            document.getElementById('bot-play').innerText = t.bot_play;
             document.getElementById('local-title').innerText = t.local_title;
             document.getElementById('local-desc').innerText = t.local_desc;
             document.getElementById('local-play').innerText = t.local_play;
             document.getElementById('online-title').innerText = t.online_title;
             document.getElementById('online-desc').innerText = t.online_desc;
             document.getElementById('online-play').innerText = t.online_play;
+            document.getElementById('color-label').innerText = t.color_label;
+            document.getElementById('color-black').innerText = t.color_black;
+            document.getElementById('color-random').innerText = t.color_random;
+            document.getElementById('color-white').innerText = t.color_white;
+            document.getElementById('difficulty-label').innerText = t.difficulty_label;
+            document.getElementById('bot-modal-play-label').innerText = t.bot_modal_play;
+            document.getElementById('bot-cancel-label').innerText = t.bot_cancel;
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.lang === lang);
             });
+            updateBotModalTitle();
         }
 
         document.querySelectorAll('.lang-btn').forEach(btn => {
@@ -213,11 +390,71 @@
         });
 
         const savedLang = localStorage.getItem('preferredLang');
-        if (savedLang && translations[savedLang]) {
-            setLanguage(savedLang);
-        } else {
-            setLanguage(navigator.language.startsWith('ru') ? 'ru' : 'en');
+        const initialLang = (savedLang && translations[savedLang]) ? savedLang : (navigator.language.startsWith('ru') ? 'ru' : 'en');
+
+        // --- Game switcher: determines which game "Локальная игра" and the bot modal target ---
+        let currentGame = 'chess';
+
+        function updateGame(game) {
+            currentGame = game;
+            document.querySelectorAll('.game-switch-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.game === game);
+            });
+            document.getElementById('local-card').href = game === 'chess' ? 'chess/chess.html' : 'go/go.html';
+            updateBotModalTitle();
         }
+
+        function updateBotModalTitle() {
+            const t = translations[currentLang];
+            document.getElementById('bot-modal-title').innerText = currentGame === 'chess' ? t.bot_modal_title_chess : t.bot_modal_title_go;
+        }
+
+        document.querySelectorAll('.game-switch-btn').forEach(btn => {
+            btn.addEventListener('click', () => updateGame(btn.dataset.game));
+        });
+
+        // --- Bot setup modal ---
+        let selectedColor = 'random';
+
+        document.querySelectorAll('.color-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedColor = btn.dataset.color;
+                document.querySelectorAll('.color-toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+            });
+        });
+
+        const difficultySlider = document.getElementById('difficulty-slider');
+        difficultySlider.addEventListener('input', () => {
+            document.getElementById('difficulty-value').innerText = difficultySlider.value;
+        });
+
+        function openBotModal() {
+            document.getElementById('bot-modal').classList.add('active');
+        }
+        function closeBotModal() {
+            document.getElementById('bot-modal').classList.remove('active');
+        }
+
+        document.getElementById('mode-bot').addEventListener('click', openBotModal);
+        document.getElementById('bot-modal-cancel').addEventListener('click', closeBotModal);
+        document.getElementById('bot-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'bot-modal') closeBotModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeBotModal();
+        });
+
+        document.getElementById('bot-modal-play').addEventListener('click', () => {
+            const color = selectedColor === 'random' ? (Math.random() < 0.5 ? 'White' : 'Black') : selectedColor;
+            const difficulty = difficultySlider.value;
+            const base = currentGame === 'chess' ? 'chess/chess.html' : 'go/go.html';
+            const strengthParam = currentGame === 'chess' ? 'depth' : 'strength';
+            const params = new URLSearchParams({ bot: '1', color, [strengthParam]: difficulty });
+            window.location.href = `${base}?${params.toString()}`;
+        });
+
+        updateGame('chess');
+        setLanguage(initialLang);
     </script>
 </body>
 </html>
