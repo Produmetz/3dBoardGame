@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 
 <head>
@@ -7,6 +7,7 @@
     <meta name="game-type" content="go">
     <title>3D Го</title>
     <link rel="stylesheet" href="../tokens.css">
+    <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../nav.css">
     <link rel="stylesheet" href="../game-page.css">
     <link rel="stylesheet" href="../ui-feedback.css">
@@ -14,77 +15,24 @@
 
 <body>
     <button id="toggle-panels" class="game-btn">☰</button>
-    <!-- Левая панель с подсказками и историей ходов -->
-    <div id="left-panel">
+
+    <!-- Тулбар осей — нужен прямо во время игры, поэтому всегда на виду -->
+    <div class="axis-toolbar">
+        <button id="axis-x" class="axis-btn" title="Увеличить промежутки по оси X">X</button>
+        <button id="axis-y" class="axis-btn" title="Увеличить промежутки по оси Y">Y</button>
+        <button id="axis-z" class="axis-btn" title="Увеличить промежутки по оси Z">Z</button>
+        <button id="axis-none" class="axis-btn active" title="Без увеличения">⊙</button>
+    </div>
+
+    <!-- Единая игровая панель: статус, история ходов, действия -->
+    <div class="game-panel" id="game-panel">
         <div class="buttons-row">
             <a href="../chess/chess.html" class="game-btn">Играть в шахматы</a>
             <a href="../lobby.html?game=go" class="game-btn" style="background:#4cc9f0;color:#0a192f;">Сетевая игра</a>
-        </div>
-        <!-- Секция подсказок (по умолчанию свёрнута) -->
-        <div class="panel-section collapsed">
-            <h3>Подсказки</h3>
-            <div class="panel-content">
-                <!-- Основное управление -->
-                <div class="sub-section collapsed">
-                    <h4>Основное управление</h4>
-                    <div class="sub-content">
-                        <p>• ЛКМ - выбор клетки/фигуры</p>
-                        <p>• Выделите фигуру, затем кликните на целевую клетку для хода</p>
-                        <p>• Возможные ходы подсвечиваются зеленым цветом</p>
-                    </div>
-                </div>
-
-
-                <!-- Управление камерой -->
-                <div class="sub-section collapsed">
-                    <h4>Управление камерой</h4>
-                    <div class="sub-content">
-                        <p>• ПКМ + движение мыши - вращение камеры</p>
-                        <p>• Колесо мыши - приближение/отдаление</p>
-                        <p>• Кнопки осей (X/Y/Z) - для выбора оси, вдоль которой будет увеличенное расстояние между
-                            ячейками поля</p>
-                    </div>
-                </div>
-
-                <!-- Управление игрой -->
-                <div class="sub-section collapsed">
-                    <h4>Управление игрой</h4>
-                    <div class="sub-content">
-                        <p>• Сохранить игру - экспорт текущей игры в файл</p>
-                        <p>• Загрузить игру - импорт сохраненной игры</p>
-                        <p>• Отменить ход - возврат на ход назад</p>
-                        <p>• История ходов - просмотр всех сделанных ходов</p>
-                    </div>
-                </div>
-
-                <!-- Настройки внешнего вида -->
-                <div class="sub-section collapsed">
-                    <h4>Настройки внешнего вида</h4>
-                    <div class="sub-content">
-                        <p>• Цвета кубиков - изменение прозрачных клеток поля</p>
-                        <p>• Цвета доски - изменение цветов игрового поля</p>
-                        <p>• Цвета фигур - индивидуальные цвета для белых и черных фигур</p>
-                        <p>• Цвет фона - изменение фона сцены</p>
-                    </div>
-                </div>
-            </div>
+            <!-- Настройки (цвета, файлы, размер поля) — спрятаны за одной кнопкой -->
+            <button id="open-settings" class="game-btn" title="Настройки">⚙</button>
         </div>
 
-        <!-- Секция истории ходов -->
-        <div class="panel-section">
-            <h3>История ходов</h3>
-            <div class="panel-content">
-                <div id="move-history">
-                    <div id="history-list"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Единая правая панель с возможностью прокрутки -->
-    <div id="right-panel">
-
-        <!-- Секция информации о игре -->
         <div id="game-info" class="panel-section">
             <h3>Текущая игра</h3>
             <div class="panel-content">
@@ -93,6 +41,7 @@
                 <div>Захвачено белых: <span id="captured-white">0</span></div>
                 <div id="score-display" style="margin-top:5px;"></div>
                 <div id="game-status" style="color: #ff5722; margin-top: 10px;"></div>
+                <div id="go-bot-status" style="color: #9bb4d0; margin-top: 6px;"></div>
             </div>
         </div>
 
@@ -158,144 +107,134 @@
             </div>
         </div>
 
-        <!-- Панель результата игры (скрыта по умолчанию) -->
-        <div id="game-result-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:100; background:rgba(10,25,47,0.95); border:2px solid #4cc9f0; border-radius:15px; padding:30px; min-width:320px; text-align:center; box-shadow:0 0 30px rgba(76,201,240,0.3);">
-            <h2 style="color:#4cc9f0; margin-bottom:15px;">ИГРА ОКОНЧЕНА</h2>
-            <div id="game-result-text" style="font-size:1.2em; color:#eef4ff; margin-bottom:10px;"></div>
-            <div id="game-result-reason" style="font-size:0.9em; color:#9bb4d0; margin-bottom:20px;"></div>
-            <div id="game-result-mode" style="font-size:0.8em; color:#7a8eaa; margin-bottom:15px;"></div>
-            <div style="display:flex; gap:10px; justify-content:center;">
-                <button id="rematch-btn" class="game-btn" style="background:#4cc9f0; color:#0a192f;">Реванш</button>
-                <button id="result-back-to-lobby-btn" class="game-btn">В лобби</button>
-            </div>
-            <div id="rematch-status" style="margin-top:10px; color:#9bb4d0; display:none;"></div>
-        </div>
-
-        <!-- Панель согласования мёртвых камней (скрыта по умолчанию) -->
-        <div id="go-scoring-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:100; background:rgba(10,25,47,0.95); border:2px solid #4cc9f0; border-radius:15px; padding:30px; min-width:320px; text-align:center; box-shadow:0 0 30px rgba(76,201,240,0.3);">
-            <h2 style="color:#4cc9f0; margin-bottom:15px;">ПОДСЧЁТ ОЧКОВ</h2>
-            <div style="font-size:0.9em; color:#9bb4d0; margin-bottom:15px;">Кликните по камням, чтобы отметить мёртвые группы</div>
-            <div id="go-scoring-score" style="font-size:1.2em; color:#eef4ff; margin-bottom:10px;"></div>
-            <div id="go-scoring-network-status" style="font-size:0.9em; color:#9bb4d0; margin-bottom:10px; display:none;"></div>
-            <div style="display:flex; gap:10px; justify-content:center;">
-                <button id="go-scoring-confirm-btn" class="game-btn" style="background:#4cc9f0; color:#0a192f;">Подтвердить и завершить</button>
-                <button id="go-scoring-resume-btn" class="game-btn">Продолжить партию</button>
-            </div>
-        </div>
-
-        <!-- Секция настроек -->
         <div class="panel-section">
-            <h3>Настройки</h3>
+            <h3>История ходов</h3>
             <div class="panel-content">
-                <h4>Управление настройками</h4>
-                <div class="buttons-row">
-                    <button id="save-settings" class="game-btn">Сохранить настройки</button>
-                    <button id="load-settings" class="game-btn">Загрузить настройки</button>
-                    <input type="file" id="settings-file-input" accept=".json" style="display: none;">
-                </div>
-                <div class="sub-section">
-                    <h4>Размер поля для Го</h4>
-                    <div class="sub-content">
-                        <label>X: <input type="number" id="go-size-x" value="4" min="3" max="10"></label>
-                        <label>Y: <input type="number" id="go-size-y" value="4" min="3" max="10"></label>
-                        <label>Z: <input type="number" id="go-size-z" value="4" min="3" max="10"></label>
-                        <label>Коми: <input type="number" id="go-komi" value="6.5" step="0.5" min="0" max="100"></label>
-                        <label>Правила:
-                            <select id="go-rule-set" class="game-btn" style="width: auto; padding: 4px 8px;">
-                                <option value="chinese" selected>Китайские</option>
-                                <option value="japanese">Японские</option>
-                                <option value="korean">Корейские</option>
-                            </select>
-                        </label>
-                        <button id="apply-go-size" class="game-btn">Применить</button>
-                    </div>
-                </div>
-
-                <h4>Увеличить промежутки вдоль оси</h4>
-                <div class="buttons-row">
-                    <button id="axis-x" class="axis-btn">Ось X</button>
-                    <button id="axis-y" class="axis-btn">Ось Y</button>
-                    <button id="axis-z" class="axis-btn">Ось Z</button>
-                    <button id="axis-none" class="axis-btn active">Без увеличения</button>
-                </div>
-
-                <div class="sub-section collapsed">
-                    <h4>Цвета</h4>
-                    <div class="sub-content">
-                        <div class="color-picker-container">
-                            <div class="color-input-container">
-                                <label for="bg-color">Фон:</label>
-                                <input type="color" id="bg-color" class="color-input" value="#FFFFFF">
-                            </div>
-                            <div class="color-input-container">
-                                <label for="board-color-1">Доска цвет 1:</label>
-                                <input type="color" id="board-color-1" class="color-input" value="#1E90FF">
-                            </div>
-                            <div class="color-input-container">
-                                <label for="board-color-2">Доска цвет 2:</label>
-                                <input type="color" id="board-color-2" class="color-input" value="#0a192f">
-                            </div>
-                            <div class="color-input-container">
-                                <label for="white-figures-color">Белые фигуры:</label>
-                                <input type="color" id="white-figures-color" class="color-input" value="#FFFFFF">
-                            </div>
-                            <div class="color-input-container">
-                                <label for="black-figures-color">Черные фигуры:</label>
-                                <input type="color" id="black-figures-color" class="color-input" value="#000000">
-                            </div>
-                        </div>
-                    </div>
+                <div id="move-history">
+                    <div id="history-list"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Секция игры -->
         <div class="panel-section">
-            <h3>Игра</h3>
+            <h3>Действия</h3>
             <div class="panel-content">
-                <h4>Управление игрой</h4>
                 <div class="buttons-row">
-                    <button id="save-game" class="game-btn">Сохранить игру</button>
-                    <button id="load-game" class="game-btn">Загрузить игру</button>
                     <button id="new-game" class="game-btn">Новая игра</button>
                     <button id="undo-move" class="game-btn">Отменить ход</button>
                     <button id="pass-btn" class="game-btn">Пас</button>
                     <button id="local-resign-btn" class="game-btn">Сдаться</button>
                 </div>
+            </div>
+        </div>
+    </div>
 
-                <div id="go-bot-controls" style="margin-top: 15px; padding-top: 12px; border-top: 1px solid #4cc9f0;">
-                    <h4>Бот (локально)</h4>
-                    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.9em;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" id="go-bot-enabled">
-                            Включить бота
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            Сторона:
-                            <select id="go-bot-color" class="game-btn" style="width: auto; padding: 4px 8px;">
-                                <option value="White" selected>Белые</option>
-                                <option value="Black">Чёрные</option>
-                            </select>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            Алгоритм:
-                            <select id="go-bot-algorithm" class="game-btn" style="width: auto; padding: 4px 8px;">
-                                <option value="greedy">Жадный</option>
-                                <option value="search" selected>Поиск (1–2)</option>
-                                <option value="mcts">MCTS</option>
-                            </select>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            Сила:
-                            <input type="range" id="go-bot-strength" min="1" max="5" value="3" style="flex: 1;">
-                            <span id="go-bot-strength-value">3</span>
-                        </label>
-                        <div id="go-bot-strength-hint" style="color: #7a8eaa; font-size: 0.8em;">Сила: глубина 2 + шире beam</div>
-                        <div id="go-bot-status" style="color: #9bb4d0; min-height: 1.2em;"></div>
-                        <div style="color: #7a8eaa; font-size: 0.8em;">Жадный — мгновенно; Поиск — быстро; MCTS — сильнее, думает в Worker.</div>
+    <!-- Модалка настроек: всё, что не нужно прямо во время хода -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <h3>Настройки</h3>
+
+            <div class="sub-section collapsed">
+                <h4>Отображение</h4>
+                <div class="sub-content">
+                    <div class="color-picker-container">
+                        <div class="color-input-container">
+                            <label for="bg-color">Фон:</label>
+                            <input type="color" id="bg-color" class="color-input" value="#FFFFFF">
+                        </div>
+                        <div class="color-input-container">
+                            <label for="board-color-1">Доска цвет 1:</label>
+                            <input type="color" id="board-color-1" class="color-input" value="#1E90FF">
+                        </div>
+                        <div class="color-input-container">
+                            <label for="board-color-2">Доска цвет 2:</label>
+                            <input type="color" id="board-color-2" class="color-input" value="#0a192f">
+                        </div>
+                        <div class="color-input-container">
+                            <label for="white-figures-color">Белые фигуры:</label>
+                            <input type="color" id="white-figures-color" class="color-input" value="#FFFFFF">
+                        </div>
+                        <div class="color-input-container">
+                            <label for="black-figures-color">Черные фигуры:</label>
+                            <input type="color" id="black-figures-color" class="color-input" value="#000000">
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <div class="sub-section collapsed">
+                <h4>Размер поля для новой игры</h4>
+                <div class="sub-content">
+                    <label>X: <input type="number" id="go-size-x" value="4" min="3" max="10"></label>
+                    <label>Y: <input type="number" id="go-size-y" value="4" min="3" max="10"></label>
+                    <label>Z: <input type="number" id="go-size-z" value="4" min="3" max="10"></label>
+                    <label>Коми: <input type="number" id="go-komi" value="6.5" step="0.5" min="0" max="100"></label>
+                    <label>Правила:
+                        <select id="go-rule-set" class="game-btn" style="width: auto; padding: 4px 8px;">
+                            <option value="chinese" selected>Китайские</option>
+                            <option value="japanese">Японские</option>
+                            <option value="korean">Корейские</option>
+                        </select>
+                    </label>
+                    <button id="apply-go-size" class="game-btn">Применить</button>
+                </div>
+            </div>
+
+            <div class="sub-section collapsed">
+                <h4>Файл</h4>
+                <div class="sub-content">
+                    <div class="buttons-row">
+                        <button id="save-settings" class="game-btn">Сохранить настройки</button>
+                        <button id="load-settings" class="game-btn">Загрузить настройки</button>
+                        <input type="file" id="settings-file-input" accept=".json" style="display: none;">
+                    </div>
+                    <div class="buttons-row" style="margin-top:8px;">
+                        <button id="save-game" class="game-btn">Сохранить игру</button>
+                        <button id="load-game" class="game-btn">Загрузить игру</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sub-section collapsed">
+                <h4>Справка</h4>
+                <div class="sub-content">
+                    <p>• ЛКМ - выбор клетки/фигуры</p>
+                    <p>• Выделите фигуру, затем кликните на целевую клетку для хода</p>
+                    <p>• Возможные ходы подсвечиваются зеленым цветом</p>
+                    <p>• ПКМ + движение мыши - вращение камеры</p>
+                    <p>• Колесо мыши - приближение/отдаление</p>
+                    <p>• Кнопки осей (X/Y/Z) рядом с доской - увеличенное расстояние между ячейками поля вдоль выбранной оси</p>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button id="close-settings" class="btn btn-secondary" style="width:100%; justify-content:center;">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Панель результата игры (скрыта по умолчанию) -->
+    <div id="game-result-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:100; background:rgba(10,25,47,0.95); border:2px solid #4cc9f0; border-radius:15px; padding:30px; min-width:320px; text-align:center; box-shadow:0 0 30px rgba(76,201,240,0.3);">
+        <h2 style="color:#4cc9f0; margin-bottom:15px;">ИГРА ОКОНЧЕНА</h2>
+        <div id="game-result-text" style="font-size:1.2em; color:#eef4ff; margin-bottom:10px;"></div>
+        <div id="game-result-reason" style="font-size:0.9em; color:#9bb4d0; margin-bottom:20px;"></div>
+        <div id="game-result-mode" style="font-size:0.8em; color:#7a8eaa; margin-bottom:15px;"></div>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            <button id="rematch-btn" class="game-btn" style="background:#4cc9f0; color:#0a192f;">Реванш</button>
+            <button id="result-back-to-lobby-btn" class="game-btn">В лобби</button>
+        </div>
+        <div id="rematch-status" style="margin-top:10px; color:#9bb4d0; display:none;"></div>
+    </div>
+
+    <!-- Панель согласования мёртвых камней (скрыта по умолчанию) -->
+    <div id="go-scoring-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:100; background:rgba(10,25,47,0.95); border:2px solid #4cc9f0; border-radius:15px; padding:30px; min-width:320px; text-align:center; box-shadow:0 0 30px rgba(76,201,240,0.3);">
+        <h2 style="color:#4cc9f0; margin-bottom:15px;">ПОДСЧЁТ ОЧКОВ</h2>
+        <div style="font-size:0.9em; color:#9bb4d0; margin-bottom:15px;">Кликните по камням, чтобы отметить мёртвые группы</div>
+        <div id="go-scoring-score" style="font-size:1.2em; color:#eef4ff; margin-bottom:10px;"></div>
+        <div id="go-scoring-network-status" style="font-size:0.9em; color:#9bb4d0; margin-bottom:10px; display:none;"></div>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            <button id="go-scoring-confirm-btn" class="game-btn" style="background:#4cc9f0; color:#0a192f;">Подтвердить и завершить</button>
+            <button id="go-scoring-resume-btn" class="game-btn">Продолжить партию</button>
         </div>
     </div>
 

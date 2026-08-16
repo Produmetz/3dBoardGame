@@ -96,6 +96,62 @@ canvas {
     padding-right: 10px;
 }
 
+/* Единая игровая панель для chess.html/go.html (статус, история ходов,
+   действия) — заменяет пару #left-panel/#right-panel на боевом экране.
+   #left-panel/#right-panel остаются как есть для position-editor.html и
+   figures-tutorial.html, которые в этот редизайн не входят. */
+#game-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 320px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding-right: 10px;
+}
+
+#game-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+#game-panel::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+#game-panel::-webkit-scrollbar-thumb {
+    background: var(--color-accent);
+    border-radius: 4px;
+}
+
+#game-panel::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent-hover);
+}
+
+/* Тулбар осей — камероподобное управление, нужно прямо во время игры,
+   поэтому не прячется в настройки. Отдельный угол от game-panel и
+   toggle-panels, чтобы не пересекаться с ними. */
+.axis-toolbar {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 10;
+    display: flex;
+    gap: 6px;
+    background: var(--color-panel-bg-game);
+    padding: 6px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-panel-game);
+}
+
+.axis-toolbar .axis-btn {
+    margin: 0;
+    padding: 6px 12px;
+}
+
 /* Стиль для скроллбара left-панели */
 #left-panel::-webkit-scrollbar {
     width: 8px;
@@ -351,7 +407,8 @@ canvas {
 
     /* Панели выстраиваются вертикально, фон прозрачный (фон задаётся секциями) */
     #left-panel,
-    #right-panel {
+    #right-panel,
+    #game-panel {
         position: relative;
         top: auto;
         left: auto;

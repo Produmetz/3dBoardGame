@@ -153,8 +153,18 @@ canvas.addEventListener('mouseup', (e) => {
 });
 
 document.getElementById('toggle-panels').addEventListener('click', () => {
-    const left = document.getElementById('left-panel');
-    const right = document.getElementById('right-panel');
-    left.classList.toggle('hidden');
-    right.classList.toggle('hidden');
+    document.getElementById('game-panel')?.classList.toggle('hidden');
+});
+
+document.getElementById('open-settings')?.addEventListener('click', () => {
+    document.getElementById('settings-modal').classList.add('active');
+});
+document.getElementById('close-settings')?.addEventListener('click', () => {
+    document.getElementById('settings-modal').classList.remove('active');
+});
+document.getElementById('settings-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'settings-modal') e.target.classList.remove('active');
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.getElementById('settings-modal')?.classList.remove('active');
 });
