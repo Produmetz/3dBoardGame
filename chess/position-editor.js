@@ -139,6 +139,35 @@ class PositionEditor {
                 this.handleCanvasClick(event);
             }
         });
+
+        // Поддержка touch-событий для мобильных устройств
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            this.mouseDownX = touch.clientX;
+            this.mouseDownY = touch.clientY;
+            this.isDragging = false;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (this.mouseDownX === undefined) return;
+            const touch = e.touches[0];
+            const dx = Math.abs(touch.clientX - this.mouseDownX);
+            const dy = Math.abs(touch.clientY - this.mouseDownY);
+            if (dx > this.dragThreshold || dy > this.dragThreshold) {
+                this.isDragging = true;
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (this.isDragging) return;
+            const touch = e.changedTouches[0];
+            if (touch) {
+                this.handleCanvasClick({ clientX: touch.clientX, clientY: touch.clientY });
+            }
+        });
     }
 
     updateFigureDescription() {

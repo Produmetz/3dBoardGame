@@ -18,6 +18,10 @@ body {
 canvas {
     display: block;
     pointer-events: auto;
+    /* останавливаем жесты браузера (pull-to-refresh, pinch-zoom страницы,
+       двойной тап-зум), чтобы touch-жесты полностью доставались OrbitControls
+       и обработчикам выбора фигур/клеток */
+    touch-action: none;
 }
 
 .highlight {
