@@ -55,6 +55,74 @@
     border-bottom-color: var(--color-accent);
 }
 
+/* "Игра" dropdown: reveals Шахматы/Го/Играть онлайн on hover (desktop) or
+   tap on the caret (touch, see nav.js _wireDropdown). The link itself
+   still navigates straight to the homepage — Игра and Главная are the
+   same destination, the dropdown is just a shortcut into it. */
+.nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.nav-item.active > .nav-link {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+}
+
+.nav-caret {
+    display: inline-block;
+    font-size: 0.7em;
+    margin-left: 0.2em;
+    transition: transform 0.2s;
+}
+
+.nav-has-dropdown:hover .nav-caret,
+.nav-has-dropdown.open .nav-caret {
+    transform: rotate(180deg);
+}
+
+.nav-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 0.6rem;
+    min-width: 180px;
+    padding: 0.4rem;
+    flex-direction: column;
+    background: rgba(10, 15, 26, 0.97);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.5);
+}
+
+.nav-has-dropdown:hover .nav-dropdown,
+.nav-has-dropdown.open .nav-dropdown,
+.nav-has-dropdown:focus-within .nav-dropdown {
+    display: flex;
+}
+
+.nav-dropdown-link {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font-size: 0.88rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+}
+
+.nav-dropdown-link:hover {
+    background: var(--color-surface-raised);
+    color: var(--color-text);
+}
+
+.nav-dropdown-link.active {
+    color: var(--color-accent);
+}
+
 /* Push page content below the fixed bar. Game pages skip this: their
    canvas is sized to the full window and must start at the very top —
    the bar just overlays the top strip of it instead (same treatment their
