@@ -39,13 +39,20 @@ class LobbyManager {
 
     parseParams() {
         const params = new URLSearchParams(window.location.search);
-        this.serverIndex = parseInt(params.get('server')) || -1;
+        // NB: server index 0 (the first/default server) is falsy, so
+        // `parseInt(...) || -1` would wrongly reset it to -1 - parse
+        // explicitly instead.
+        const rawServer = parseInt(params.get('server'), 10);
+        this.serverIndex = Number.isNaN(rawServer) ? -1 : rawServer;
         this.authToken = params.get('token');
         this.nickname = params.get('nickname');
         // If ?stay=1 is in URL, player came back from game - don't auto-redirect
         if (params.get('stay') === '1') {
             this.stayInLobby = true;
         }
+        // ?tab=create-room (etc.) - e.g. from the top-nav "Создать запрос
+        // на игру" shortcut - opens straight to that tab instead of Quick Play.
+        this.initialTab = params.get('tab');
 
         const servers = JSON.parse(localStorage.getItem('lobby_servers') || '[]');
         if (this.serverIndex >= 0 && servers[this.serverIndex]) {
@@ -72,6 +79,10 @@ class LobbyManager {
         });
 
         document.getElementById('refresh-my-rooms')?.addEventListener('click', () => this.getMyRooms());
+
+        if (this.initialTab) {
+            document.querySelector(`.lobby-tab[data-tab="${this.initialTab}"]`)?.click();
+        }
     }
 
     setupEvents() {

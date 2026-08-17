@@ -85,11 +85,15 @@
 .nav-dropdown {
     display: none;
     position: absolute;
+    /* No gap between the trigger and the menu: a margin here would create
+       a dead zone the mouse has to cross while moving diagonally toward
+       the menu, which drops the :hover before the pointer arrives and
+       makes every item unclickable. Padding-top gives visual breathing
+       room instead, since padding is still part of the hoverable box. */
     top: 100%;
     left: 0;
-    margin-top: 0.6rem;
+    padding: 0.75rem 0.4rem 0.4rem;
     min-width: 180px;
-    padding: 0.4rem;
     flex-direction: column;
     background: rgba(10, 15, 26, 0.97);
     backdrop-filter: blur(8px);
