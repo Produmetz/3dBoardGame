@@ -151,6 +151,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.files[0]) GraphicsEngine.setFigureTextureCustom(e.target.files[0]);
     });
 
+    const customShapesPanel = document.getElementById('custom-shapes-panel');
     if (GraphicsEngine.shapeSets) {
         const shapeSelect = document.getElementById('shape-set');
         if (shapeSelect) {
@@ -161,13 +162,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 shapeSelect.appendChild(opt);
             });
             shapeSelect.value = GraphicsEngine.getShapeSet();
-            shapeSelect.addEventListener('change', (e) => GraphicsEngine.setShapeSet(e.target.value));
+            if (customShapesPanel) customShapesPanel.style.display = shapeSelect.value === 'custom' ? 'block' : 'none';
+            shapeSelect.addEventListener('change', (e) => {
+                GraphicsEngine.setShapeSet(e.target.value);
+                if (customShapesPanel) customShapesPanel.style.display = e.target.value === 'custom' ? 'block' : 'none';
+            });
         }
     }
 
+    // "Свои формы" — по загрузчику на тип фигуры (см. #custom-shapes-panel
+    // в chess.html). Загрузка идёт через тот же GraphicsEngine.setCustomShapeForType
+    // независимо от того, какой набор форм активен сейчас — перерисовка
+    // произойдёт только если уже выбран набор "custom" (см. TextureManager.
+    // setCustomShapeForType в graphics.js).
+    document.querySelectorAll('#custom-shapes-panel input[type="file"][data-piece]').forEach((input) => {
+        input.addEventListener('change', (e) => {
+            if (e.target.files[0]) GraphicsEngine.setCustomShapeForType(e.target.dataset.piece, e.target.files[0]);
+        });
+    });
+
     // Приводит цвет/текстура/форма-контролы к уже восстановленному из
     // AppearanceStore состоянию (см. graphics.js) — иначе селекты показывали
-    // бы дефолт "Нет (цвет)"/"Классический", даже когда реально применено
+    // бы дефолт "Нет (цвет)"/"По умолчанию", даже когда реально применено
     // что-то другое.
     GraphicsEngine.syncAppearanceUI();
 

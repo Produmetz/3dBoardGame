@@ -193,6 +193,41 @@
                         <label for="shape-set">Форма фигур:</label>
                         <select id="shape-set" class="game-btn" style="width:auto; padding:4px 8px;"></select>
                     </div>
+
+                    <!-- Показывается только когда "Форма фигур" = "Свои формы" -->
+                    <div id="custom-shapes-panel" style="display:none; margin-top:10px;">
+                        <p style="color: var(--color-text-secondary); font-size:0.85em; margin-bottom:8px;">
+                            Загрузите модель (.glb/.gltf) для нужных фигур — для остальных используется форма «По умолчанию». Не сохраняется между страницами и перезагрузкой.
+                        </p>
+                        <div class="color-input-container">
+                            <label for="custom-shape-Pawn">Пешка:</label>
+                            <input type="file" id="custom-shape-Pawn" accept=".glb,.gltf" data-piece="Pawn">
+                        </div>
+                        <div class="color-input-container" style="margin-top:6px;">
+                            <label for="custom-shape-Rook">Ладья:</label>
+                            <input type="file" id="custom-shape-Rook" accept=".glb,.gltf" data-piece="Rook">
+                        </div>
+                        <div class="color-input-container" style="margin-top:6px;">
+                            <label for="custom-shape-Knight">Конь:</label>
+                            <input type="file" id="custom-shape-Knight" accept=".glb,.gltf" data-piece="Knight">
+                        </div>
+                        <div class="color-input-container" style="margin-top:6px;">
+                            <label for="custom-shape-Bishop">Слон:</label>
+                            <input type="file" id="custom-shape-Bishop" accept=".glb,.gltf" data-piece="Bishop">
+                        </div>
+                        <div class="color-input-container" style="margin-top:6px;">
+                            <label for="custom-shape-Triort">Триорт:</label>
+                            <input type="file" id="custom-shape-Triort" accept=".glb,.gltf" data-piece="Triort">
+                        </div>
+                        <div class="color-input-container" style="margin-top:6px;">
+                            <label for="custom-shape-Queen">Ферзь:</label>
+                            <input type="file" id="custom-shape-Queen" accept=".glb,.gltf" data-piece="Queen">
+                        </div>
+                        <div class="color-input-container" style="margin-top:6px;">
+                            <label for="custom-shape-King">Король:</label>
+                            <input type="file" id="custom-shape-King" accept=".glb,.gltf" data-piece="King">
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -276,6 +311,7 @@
     <!-- Подключаем Three.js и OrbitControls из CDN -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
 
     <!-- Подключаем ваш скрипт -->
     <script src="../ui-feedback.js"></script>

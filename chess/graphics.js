@@ -113,7 +113,7 @@ const TextureManager = {
     figureTexturePresetName: null, // null = либо "нет текстуры", либо своя картинка (не персистится)
     backgroundTexture: null,
     backgroundTexturePresetName: null,
-    shapeSet: 'classic',
+    shapeSet: 'default',
 
     setFigurePreset(name) {
         this.figureTexture = name ? TextureLibrary.get(name) : null;
@@ -142,6 +142,16 @@ const TextureManager = {
         this.shapeSet = name;
         createAndFillBoardOnPole(ChessEngine.Pole);
         persistAppearance();
+    },
+    // Загружает свою модель для одного типа фигуры (см. CustomShapeManager,
+    // определён ниже в файле — доступен к моменту вызова, не к моменту
+    // объявления этого метода). Перерисовывает доску только если сейчас
+    // активен набор "custom" — иначе загрузка тихо кэшируется на будущее.
+    async setCustomShapeForType(pieceType, file) {
+        await CustomShapeManager.loadForType(pieceType, file);
+        if (this.shapeSet === 'custom') {
+            createAndFillBoardOnPole(ChessEngine.Pole);
+        }
     }
 };
 
@@ -205,12 +215,29 @@ const cubeFigureGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.6);
 const coneGeometry = new THREE.ConeGeometry(0.4, 1, 20);
 const cylinderGeometry = new THREE.CylinderGeometry(0.4, 0.4, 1, 20);
 const torusGeometry = new THREE.TorusGeometry(0.35, 0.16, 12, 48);
-const pyramidGeometry = new THREE.ConeGeometry(0.5, 1, 4);
-const starConeGeometry = new THREE.ConeGeometry(0.5, 1, 5);
 const torusKnotGeometry = new THREE.TorusKnotGeometry(0.4, 0.15, 64, 12);
-const tetrahedronGeometry = new THREE.TetrahedronGeometry(0.8);
 const octahedronGeometry = new THREE.OctahedronGeometry(0.6);
 const dodecahedronGeometry = new THREE.DodecahedronGeometry(0.6);
+
+// Геометрии набора "Классический" (см. createTraditional* ниже) — точёные
+// фигуры в духе обычных шахмат: общее основание+стебель у всех, различается
+// навершие. Триорта в настоящих шахматах нет, поэтому его навершие —
+// собственная придумка в том же "точёном" стиле (три узла вокруг стебля,
+// по одному на каждую пространственную ось, которые фигура пересекает
+// по диагонали одновременно).
+const tradBaseGeometry = new THREE.CylinderGeometry(0.34, 0.4, 0.22, 16);
+const tradStemGeometry = new THREE.CylinderGeometry(0.16, 0.24, 0.5, 16);
+const tradPawnHeadGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+const tradKnightHeadGeometry = new THREE.ConeGeometry(0.22, 0.5, 4);
+const tradBishopTopGeometry = new THREE.ConeGeometry(0.22, 0.42, 16);
+const tradBishopBallGeometry = new THREE.SphereGeometry(0.09, 10, 10);
+const tradRookTopGeometry = new THREE.CylinderGeometry(0.32, 0.28, 0.2, 8);
+const tradQueenBallGeometry = new THREE.SphereGeometry(0.24, 16, 16);
+const tradQueenRingGeometry = new THREE.TorusGeometry(0.27, 0.05, 8, 24);
+const tradKingConeGeometry = new THREE.ConeGeometry(0.2, 0.3, 16);
+const tradCrossBarGeometry = new THREE.BoxGeometry(0.3, 0.08, 0.08);
+const tradTriortCoreGeometry = new THREE.OctahedronGeometry(0.16);
+const tradTriortNodeGeometry = new THREE.SphereGeometry(0.13, 12, 12);
 
 // Убирает и уничтожает материалы (не геометрию — она общая и живёт всё время
 // страницы) всех дочерних мешей клетки. Вызывается при замене/удалении фигур,
@@ -275,43 +302,91 @@ function createTorus(color) {
     });
     return new THREE.Mesh(torusGeometry, material);
 }
-function createPyramid(color) {
-    const material = buildFigureMaterial(color, { shininess: 100, specular: 0x111111 });
-    return new THREE.Mesh(pyramidGeometry, material);
+// Общий материал для "Классического" набора — один на все части одной
+// фигуры (не по одному на меш), они всё равно всегда красятся вместе.
+function traditionalMaterial(color) {
+    return buildFigureMaterial(color, { shininess: 300, specular: 0xCCCCCC, emissive: 0x000011, emissiveIntensity: 0.08 });
 }
-function createStar(color) {
+
+function createTraditionalPawn(color) {
+    const material = traditionalMaterial(color);
     const group = new THREE.Group();
-
-    // Основной материал для звезды
-    const starMaterial = buildFigureMaterial(color, { shininess: 100, specular: 0x111111 });
-
-    // Создаем два конуса для формирования звезды (общая геометрия — оба конуса
-    // одинаковой формы, различается только поворот)
-    const mesh1 = new THREE.Mesh(starConeGeometry, starMaterial);
-    mesh1.rotation.x = Math.PI; // Переворачиваем конус
-
-    // Второй конус (повернут на 36 градусов для формирования лучей)
-    const mesh2 = new THREE.Mesh(starConeGeometry, starMaterial);
-    mesh2.rotation.x = Math.PI;
-    mesh2.rotation.y = Math.PI / 5; // 36 градусов
-
-    group.add(mesh1);
-    group.add(mesh2);
-
+    const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.28;
+    const stem = new THREE.Mesh(tradStemGeometry, material); stem.scale.set(0.65, 0.55, 0.65); stem.position.y = -0.02;
+    const head = new THREE.Mesh(tradPawnHeadGeometry, material); head.position.y = 0.32;
+    group.add(base, stem, head);
+    return group;
+}
+function createTraditionalRook(color) {
+    const material = traditionalMaterial(color);
+    const group = new THREE.Group();
+    const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.3;
+    const stem = new THREE.Mesh(tradStemGeometry, material); stem.position.y = 0.0;
+    const top = new THREE.Mesh(tradRookTopGeometry, material); top.position.y = 0.38;
+    group.add(base, stem, top);
+    return group;
+}
+function createTraditionalKnight(color) {
+    const material = traditionalMaterial(color);
+    const group = new THREE.Group();
+    const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.3;
+    const stem = new THREE.Mesh(tradStemGeometry, material); stem.scale.set(0.8, 0.8, 0.8); stem.position.y = -0.02;
+    // Наклонённый конус вместо настоящей "головы коня" (для той нужна
+    // произвольная геометрия/лофт, не выражается через примитивы) — читается
+    // как отдельная, непохожая на другие фигуры силуэтная деталь.
+    const head = new THREE.Mesh(tradKnightHeadGeometry, material);
+    head.position.set(0, 0.35, 0.05);
+    head.rotation.z = 0.4;
+    head.rotation.y = Math.PI / 4;
+    group.add(base, stem, head);
+    return group;
+}
+function createTraditionalBishop(color) {
+    const material = traditionalMaterial(color);
+    const group = new THREE.Group();
+    const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.3;
+    const stem = new THREE.Mesh(tradStemGeometry, material); stem.position.y = -0.02;
+    const top = new THREE.Mesh(tradBishopTopGeometry, material); top.position.y = 0.36;
+    const ball = new THREE.Mesh(tradBishopBallGeometry, material); ball.position.y = 0.62;
+    group.add(base, stem, top, ball);
+    return group;
+}
+function createTraditionalQueen(color) {
+    const material = traditionalMaterial(color);
+    const group = new THREE.Group();
+    const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.32;
+    const stem = new THREE.Mesh(tradStemGeometry, material); stem.scale.set(1, 1.15, 1); stem.position.y = 0.02;
+    const ring = new THREE.Mesh(tradQueenRingGeometry, material); ring.position.y = 0.36; ring.rotation.x = Math.PI / 2;
+    const ball = new THREE.Mesh(tradQueenBallGeometry, material); ball.position.y = 0.5;
+    group.add(base, stem, ring, ball);
+    return group;
+}
+function createTraditionalKing(color) {
+    const material = traditionalMaterial(color);
+    const group = new THREE.Group();
+    const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.32;
+    const stem = new THREE.Mesh(tradStemGeometry, material); stem.scale.set(1, 1.3, 1); stem.position.y = 0.08;
+    const top = new THREE.Mesh(tradKingConeGeometry, material); top.position.y = 0.5;
+    const crossV = new THREE.Mesh(tradCrossBarGeometry, material); crossV.position.y = 0.72; crossV.rotation.z = Math.PI / 2;
+    const crossH = new THREE.Mesh(tradCrossBarGeometry, material); crossH.position.y = 0.72; crossH.scale.set(0.6, 1, 1);
+    group.add(base, stem, top, crossV, crossH);
+    return group;
+}
+function createTraditionalTriort(color) {
+    const material = traditionalMaterial(color);
+    const group = new THREE.Group();
+    const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.3;
+    const stem = new THREE.Mesh(tradStemGeometry, material); stem.position.y = -0.02;
+    const core = new THREE.Mesh(tradTriortCoreGeometry, material); core.position.y = 0.36;
+    const node1 = new THREE.Mesh(tradTriortNodeGeometry, material); node1.position.set(0.2, 0.5, 0);
+    const node2 = new THREE.Mesh(tradTriortNodeGeometry, material); node2.position.set(-0.17, 0.5, 0.17);
+    const node3 = new THREE.Mesh(tradTriortNodeGeometry, material); node3.position.set(-0.17, 0.5, -0.17);
+    group.add(base, stem, core, node1, node2, node3);
     return group;
 }
 function createTorusKnot(color) {
     const material = buildFigureMaterial(color, { shininess: 100, specular: 0x111111 });
     return new THREE.Mesh(torusKnotGeometry, material);
-}
-function createTetrahedron(color) {
-    const material = buildFigureMaterial(color, {
-        shininess: 800, // Увеличьте значение для более концентрированного блеска
-        specular: 0xFFFFFF, // Более яркий цвет бликов (ближе к белому)
-        emissive: 0x000011, // Можно добавить небольшое свечение
-        emissiveIntensity: 0.8
-    });
-    return new THREE.Mesh(tetrahedronGeometry, material);
 }
 function createOctahedron(color) {
     const material = buildFigureMaterial(color, {
@@ -332,22 +407,82 @@ function createDodecahedron(color) {
     return new THREE.Mesh(dodecahedronGeometry, material);
 }
 
-// Наборы форм фигур — "Классический" это ровно то, что использовалось до
-// добавления смены форм (маппинг ниже, в createAndFillBoardOnPole, раньше
-// был захардкожен switch'ем). "Альтернативный" переиспользует ранее
-// определённые, но нигде не использовавшиеся геометрии (пирамида, звезда,
-// тетраэдр) — готовый второй набор форм без придумывания новой геометрии.
+// Наборы форм фигур:
+// - "default" — ровно то, что было до появления смены форм (маппинг раньше
+//   был захардкожен switch'ем в createAndFillBoardOnPole).
+// - "traditional" — точёные фигуры в духе обычных шахмат (createTraditional*
+//   выше), плюс придуманное в том же стиле навершие для Триорта, которого в
+//   настоящих шахматах нет.
+// - "custom" — обрабатывается отдельно в createAndFillBoardOnPole через
+//   CustomShapeManager (загруженные модели), поэтому реального маппинга
+//   тут не требует — пустой объект только чтобы setShapeSet('custom') прошло
+//   валидацию "такой набор существует".
 const SHAPE_CREATORS = {
     sphere: createSphere, cube: createCube, cone: createCone, cylinder: createCylinder,
-    torus: createTorus, pyramid: createPyramid, star: createStar, torusKnot: createTorusKnot,
-    tetrahedron: createTetrahedron, octahedron: createOctahedron, dodecahedron: createDodecahedron
+    torus: createTorus, torusKnot: createTorusKnot, octahedron: createOctahedron, dodecahedron: createDodecahedron,
+    tradPawn: createTraditionalPawn, tradRook: createTraditionalRook, tradKnight: createTraditionalKnight,
+    tradBishop: createTraditionalBishop, tradQueen: createTraditionalQueen, tradKing: createTraditionalKing,
+    tradTriort: createTraditionalTriort
 };
 const SHAPE_SETS = {
-    classic: { Pawn: 'cone', Rook: 'cube', Knight: 'torus', Bishop: 'sphere', Triort: 'octahedron', Queen: 'dodecahedron', King: 'torusKnot' },
-    alt: { Pawn: 'sphere', Rook: 'cube', Knight: 'star', Bishop: 'cone', Triort: 'torusKnot', Queen: 'pyramid', King: 'tetrahedron' }
+    default: { Pawn: 'cone', Rook: 'cube', Knight: 'torus', Bishop: 'sphere', Triort: 'octahedron', Queen: 'dodecahedron', King: 'torusKnot' },
+    traditional: { Pawn: 'tradPawn', Rook: 'tradRook', Knight: 'tradKnight', Bishop: 'tradBishop', Triort: 'tradTriort', Queen: 'tradQueen', King: 'tradKing' },
+    custom: {}
 };
 // Подписи для выпадающего списка в настройках.
-const SHAPE_SET_LABELS = { classic: 'Классический', alt: 'Альтернативный' };
+const SHAPE_SET_LABELS = { default: 'По умолчанию', traditional: 'Классический', custom: 'Свои формы' };
+
+// "Свои формы" — загрузка модели (.glb/.gltf) на каждый тип фигуры отдельно.
+// Не персистится между страницами/перезагрузками (как и своя текстура) —
+// модель хранится только в памяти этой вкладки; для типа без загруженной
+// модели используется форма из набора "default", а не пустая клетка.
+const CustomShapeManager = {
+    models: {}, // { Pawn: THREE.Group (нормализованный шаблон), ... }
+
+    async loadForType(pieceType, file) {
+        const url = URL.createObjectURL(file);
+        try {
+            const gltf = await new Promise((resolve, reject) => {
+                new THREE.GLTFLoader().load(url, resolve, undefined, reject);
+            });
+            this.models[pieceType] = this._normalize(gltf.scene);
+        } finally {
+            URL.revokeObjectURL(url);
+        }
+    },
+
+    // Загруженные модели бывают любого масштаба/расположения — вписываем в
+    // тот же примерный размерный "бюджет", что и остальные фигуры (~0.9 по
+    // наибольшему измерению), и центрируем, чтобы не улетали за пределы клетки.
+    _normalize(object) {
+        const box = new THREE.Box3().setFromObject(object);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z) || 1;
+
+        object.position.set(-center.x, -center.y, -center.z);
+        const wrapper = new THREE.Group();
+        wrapper.add(object);
+        wrapper.scale.setScalar(0.9 / maxDim);
+        return wrapper;
+    },
+
+    hasType(pieceType) {
+        return !!this.models[pieceType];
+    },
+
+    // Клонирует шаблон и красит все меши общим материалом фигуры (та же
+    // логика цвета/текстуры, что и у остальных наборов форм) — своя модель
+    // всё равно должна быть узнаваема как белая/чёрная фигура на доске.
+    createMesh(pieceType, color) {
+        const template = this.models[pieceType];
+        if (!template) return null;
+        const clone = template.clone(true);
+        const material = buildFigureMaterial(color, { shininess: 300, specular: 0xCCCCCC });
+        clone.traverse((child) => { if (child.isMesh) child.material = material; });
+        return clone;
+    }
+};
 
 // Функция для создания случайной фигуры (запасная)
 function createRandomFigure() {
@@ -414,9 +549,17 @@ function createAndFillBoardOnPole(pole) {
                         ColorManager.colors.whiteFigureColor :
                         ColorManager.colors.blackFigureColor;
                     figure.Color === 'White' ? GraphicsEngine.isWhiteFigure = true : GraphicsEngine.isBlackFigure = true ;
-                    const shapeName = (SHAPE_SETS[TextureManager.shapeSet] || SHAPE_SETS.classic)[figure.Name];
-                    const shapeCreator = SHAPE_CREATORS[shapeName];
-                    figureMesh = shapeCreator ? shapeCreator(color) : createRandomFigure();
+                    if (TextureManager.shapeSet === 'custom' && CustomShapeManager.hasType(figure.Name)) {
+                        figureMesh = CustomShapeManager.createMesh(figure.Name, color);
+                    } else {
+                        // Набор "custom" без загруженной модели для этого типа
+                        // (или неизвестный/устаревший сохранённый набор) —
+                        // используем форму "default", а не пустую клетку.
+                        const shapeName = (SHAPE_SETS[TextureManager.shapeSet] || SHAPE_SETS.default)[figure.Name]
+                            || SHAPE_SETS.default[figure.Name];
+                        const shapeCreator = SHAPE_CREATORS[shapeName];
+                        figureMesh = shapeCreator ? shapeCreator(color) : createRandomFigure();
+                    }
 
                     cubeObjects[x][y][z].add(figureMesh);
                 }
@@ -651,6 +794,8 @@ window.GraphicsEngine = {
     setBackgroundTextureCustom: (file) => TextureManager.setBackgroundCustom(file),
     setShapeSet: (name) => TextureManager.setShapeSet(name),
     getShapeSet: () => TextureManager.shapeSet,
+    setCustomShapeForType: (pieceType, file) => TextureManager.setCustomShapeForType(pieceType, file),
+    hasCustomShape: (pieceType) => CustomShapeManager.hasType(pieceType),
     figureTexturePresets: TextureLibrary.figurePresets,
     backgroundTexturePresets: TextureLibrary.backgroundPresets,
     shapeSets: SHAPE_SET_LABELS,
