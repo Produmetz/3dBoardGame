@@ -27,6 +27,8 @@
 # Chess
 !chess/
 !chess/*
+!chess/models/
+!chess/models/*
 
 # Go
 !go/

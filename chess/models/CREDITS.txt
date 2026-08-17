@@ -1,0 +1,17 @@
+Source models: "Simple/Classic Chess Set" by Energybolter
+https://www.thingiverse.com/thing:3018153
+License: Creative Commons - Public Domain Dedication (CC0 1.0)
+http://creativecommons.org/publicdomain/zero/1.0/
+No attribution required, but noted here for provenance.
+
+The originals are 3D-print-oriented STL files (~45,000-79,000 triangles
+each - far more detail than a real-time web scene needs for a piece that's
+often small on screen and may appear dozens of times on one board). Each
+was decimated with THREE.SimplifyModifier down to a size appropriate for
+this project (700-18,000 triangles depending on how much detail the shape
+needs to stay recognizable - the knight's head loses its silhouette much
+faster than the pawn's simple profile does) and re-exported as GLB.
+
+Triort has no equivalent in real chess - it's this project's own piece -
+so there's no source model for it; chess/graphics.js builds its shape
+procedurally to sit stylistically alongside these six.

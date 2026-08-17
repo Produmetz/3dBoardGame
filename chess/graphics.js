@@ -137,11 +137,22 @@ const TextureManager = {
         this.backgroundTexturePresetName = null;
         scene.background = this.backgroundTexture;
     },
-    setShapeSet(name) {
+    async setShapeSet(name) {
         if (!SHAPE_SETS[name]) return;
         this.shapeSet = name;
+        // Рендерим сразу (набор "default" — пока модели "Классического" ещё
+        // не подгружены, createAndFillBoardOnPole и так падает обратно на
+        // "default" для типов без готовой модели, см. там же), затем, если
+        // это первое включение "Классического" в этой вкладке, догружаем все
+        // 6 моделей и перерисовываем уже с ними.
         createAndFillBoardOnPole(ChessEngine.Pole);
         persistAppearance();
+        if (name === 'traditional' && !TraditionalModelManager.isReady()) {
+            await TraditionalModelManager.ensureLoaded();
+            if (this.shapeSet === 'traditional') { // пользователь мог успеть переключиться на другой набор
+                createAndFillBoardOnPole(ChessEngine.Pole);
+            }
+        }
     },
     // Загружает свою модель для одного типа фигуры (см. CustomShapeManager,
     // определён ниже в файле — доступен к моменту вызова, не к моменту
@@ -168,34 +179,12 @@ function persistAppearance() {
     });
 }
 
-// Восстанавливает сохранённое отображение сразу при загрузке скрипта — до
-// того, как какая-либо страница успеет построить доску со значениями по
-// умолчанию (Game.init()/PositionEditor.init()/инлайн-скрипты создают доску
-// уже ПОСЛЕ этого файла, т.к. подключены позже в HTML). Работает одинаково
-// на всех четырёх страницах, использующих этот файл.
-(function restoreStoredAppearance() {
-    const stored = AppearanceStore.load('chess');
-    if (!stored) return;
-
-    if (stored.colors) {
-        for (const [key, value] of Object.entries(stored.colors)) {
-            if (ColorManager.colors.hasOwnProperty(key)) ColorManager.colors[key] = value;
-        }
-    }
-    if (stored.bgTexture) {
-        TextureManager.backgroundTexture = TextureLibrary.get(stored.bgTexture);
-        TextureManager.backgroundTexturePresetName = stored.bgTexture;
-    }
-    if (stored.figureTexture) {
-        TextureManager.figureTexture = TextureLibrary.get(stored.figureTexture);
-        TextureManager.figureTexturePresetName = stored.figureTexture;
-    }
-    if (stored.shapeSet) {
-        TextureManager.shapeSet = stored.shapeSet;
-    }
-
-    scene.background = TextureManager.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
-})();
+// restoreStoredAppearance() runs further down this file, right after
+// TraditionalModelManager is declared - it references that const, and as an
+// IIFE it executes immediately at that point in the script, so it can't run
+// any earlier than the declaration itself (unlike the rest of this file's
+// cross-references, which are all inside callbacks that only fire after the
+// whole script has finished loading).
 
 
 
@@ -219,23 +208,14 @@ const torusKnotGeometry = new THREE.TorusKnotGeometry(0.4, 0.15, 64, 12);
 const octahedronGeometry = new THREE.OctahedronGeometry(0.6);
 const dodecahedronGeometry = new THREE.DodecahedronGeometry(0.6);
 
-// Геометрии набора "Классический" (см. createTraditional* ниже) — точёные
-// фигуры в духе обычных шахмат: общее основание+стебель у всех, различается
-// навершие. Триорта в настоящих шахматах нет, поэтому его навершие —
-// собственная придумка в том же "точёном" стиле (три узла вокруг стебля,
-// по одному на каждую пространственную ось, которые фигура пересекает
-// по диагонали одновременно).
+// Геометрии для Триорта в наборе "Классический" — общее основание+стебель
+// (тот же приём, что использовался бы для точёных фигур), навершие —
+// собственная придумка в том же стиле (три узла вокруг стебля, по одному на
+// каждую пространственную ось, которые фигура пересекает по диагонали
+// одновременно). Остальные 6 типов фигур в этом наборе больше не собираются
+// из примитивов — грузятся как готовые модели, см. TraditionalModelManager.
 const tradBaseGeometry = new THREE.CylinderGeometry(0.34, 0.4, 0.22, 16);
 const tradStemGeometry = new THREE.CylinderGeometry(0.16, 0.24, 0.5, 16);
-const tradPawnHeadGeometry = new THREE.SphereGeometry(0.2, 16, 16);
-const tradKnightHeadGeometry = new THREE.ConeGeometry(0.22, 0.5, 4);
-const tradBishopTopGeometry = new THREE.ConeGeometry(0.22, 0.42, 16);
-const tradBishopBallGeometry = new THREE.SphereGeometry(0.09, 10, 10);
-const tradRookTopGeometry = new THREE.CylinderGeometry(0.32, 0.28, 0.2, 8);
-const tradQueenBallGeometry = new THREE.SphereGeometry(0.24, 16, 16);
-const tradQueenRingGeometry = new THREE.TorusGeometry(0.27, 0.05, 8, 24);
-const tradKingConeGeometry = new THREE.ConeGeometry(0.2, 0.3, 16);
-const tradCrossBarGeometry = new THREE.BoxGeometry(0.3, 0.08, 0.08);
 const tradTriortCoreGeometry = new THREE.OctahedronGeometry(0.16);
 const tradTriortNodeGeometry = new THREE.SphereGeometry(0.13, 12, 12);
 
@@ -308,70 +288,10 @@ function traditionalMaterial(color) {
     return buildFigureMaterial(color, { shininess: 300, specular: 0xCCCCCC, emissive: 0x000011, emissiveIntensity: 0.08 });
 }
 
-function createTraditionalPawn(color) {
-    const material = traditionalMaterial(color);
-    const group = new THREE.Group();
-    const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.28;
-    const stem = new THREE.Mesh(tradStemGeometry, material); stem.scale.set(0.65, 0.55, 0.65); stem.position.y = -0.02;
-    const head = new THREE.Mesh(tradPawnHeadGeometry, material); head.position.y = 0.32;
-    group.add(base, stem, head);
-    return group;
-}
-function createTraditionalRook(color) {
-    const material = traditionalMaterial(color);
-    const group = new THREE.Group();
-    const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.3;
-    const stem = new THREE.Mesh(tradStemGeometry, material); stem.position.y = 0.0;
-    const top = new THREE.Mesh(tradRookTopGeometry, material); top.position.y = 0.38;
-    group.add(base, stem, top);
-    return group;
-}
-function createTraditionalKnight(color) {
-    const material = traditionalMaterial(color);
-    const group = new THREE.Group();
-    const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.3;
-    const stem = new THREE.Mesh(tradStemGeometry, material); stem.scale.set(0.8, 0.8, 0.8); stem.position.y = -0.02;
-    // Наклонённый конус вместо настоящей "головы коня" (для той нужна
-    // произвольная геометрия/лофт, не выражается через примитивы) — читается
-    // как отдельная, непохожая на другие фигуры силуэтная деталь.
-    const head = new THREE.Mesh(tradKnightHeadGeometry, material);
-    head.position.set(0, 0.35, 0.05);
-    head.rotation.z = 0.4;
-    head.rotation.y = Math.PI / 4;
-    group.add(base, stem, head);
-    return group;
-}
-function createTraditionalBishop(color) {
-    const material = traditionalMaterial(color);
-    const group = new THREE.Group();
-    const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.3;
-    const stem = new THREE.Mesh(tradStemGeometry, material); stem.position.y = -0.02;
-    const top = new THREE.Mesh(tradBishopTopGeometry, material); top.position.y = 0.36;
-    const ball = new THREE.Mesh(tradBishopBallGeometry, material); ball.position.y = 0.62;
-    group.add(base, stem, top, ball);
-    return group;
-}
-function createTraditionalQueen(color) {
-    const material = traditionalMaterial(color);
-    const group = new THREE.Group();
-    const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.32;
-    const stem = new THREE.Mesh(tradStemGeometry, material); stem.scale.set(1, 1.15, 1); stem.position.y = 0.02;
-    const ring = new THREE.Mesh(tradQueenRingGeometry, material); ring.position.y = 0.36; ring.rotation.x = Math.PI / 2;
-    const ball = new THREE.Mesh(tradQueenBallGeometry, material); ball.position.y = 0.5;
-    group.add(base, stem, ring, ball);
-    return group;
-}
-function createTraditionalKing(color) {
-    const material = traditionalMaterial(color);
-    const group = new THREE.Group();
-    const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.32;
-    const stem = new THREE.Mesh(tradStemGeometry, material); stem.scale.set(1, 1.3, 1); stem.position.y = 0.08;
-    const top = new THREE.Mesh(tradKingConeGeometry, material); top.position.y = 0.5;
-    const crossV = new THREE.Mesh(tradCrossBarGeometry, material); crossV.position.y = 0.72; crossV.rotation.z = Math.PI / 2;
-    const crossH = new THREE.Mesh(tradCrossBarGeometry, material); crossH.position.y = 0.72; crossH.scale.set(0.6, 1, 1);
-    group.add(base, stem, top, crossV, crossH);
-    return group;
-}
+// Триорта в обычных шахматах нет — это фигура только этого варианта, так что
+// для неё нет модели в chess/models/ (см. TraditionalModelManager ниже) и она
+// продолжает собираться из примитивов, в том же "точёном" стиле (общие
+// основание+стебель), что и раньше, просто теперь единственная такая.
 function createTraditionalTriort(color) {
     const material = traditionalMaterial(color);
     const group = new THREE.Group();
@@ -382,6 +302,13 @@ function createTraditionalTriort(color) {
     const node2 = new THREE.Mesh(tradTriortNodeGeometry, material); node2.position.set(-0.17, 0.5, 0.17);
     const node3 = new THREE.Mesh(tradTriortNodeGeometry, material); node3.position.set(-0.17, 0.5, -0.17);
     group.add(base, stem, core, node1, node2, node3);
+    // Без масштабирования эта фигура на треть шире загруженных моделей
+    // остальных 6 типов (0.8 против ~0.45-0.52) - они нормализованы в
+    // normalizeLoadedModel по наибольшему измерению, а эта собрана из
+    // примитивов с абсолютными размерами. Подгоняем вручную под тот же
+    // силуэт: близкая ширина, чуть меньше высоты (у неё и так нет высокого
+    // навершия вроде короны/креста, которое "вытягивало" бы её).
+    group.scale.set(0.62, 0.95, 0.62);
     return group;
 }
 function createTorusKnot(color) {
@@ -410,27 +337,83 @@ function createDodecahedron(color) {
 // Наборы форм фигур:
 // - "default" — ровно то, что было до появления смены форм (маппинг раньше
 //   был захардкожен switch'ем в createAndFillBoardOnPole).
-// - "traditional" — точёные фигуры в духе обычных шахмат (createTraditional*
-//   выше), плюс придуманное в том же стиле навершие для Триорта, которого в
-//   настоящих шахматах нет.
-// - "custom" — обрабатывается отдельно в createAndFillBoardOnPole через
-//   CustomShapeManager (загруженные модели), поэтому реального маппинга
-//   тут не требует — пустой объект только чтобы setShapeSet('custom') прошло
-//   валидацию "такой набор существует".
+// - "traditional" — настоящие модели шахматных фигур (см. TraditionalModelManager
+//   ниже), плюс придуманная в похожем стиле форма для Триорта, которого в
+//   настоящих шахматах нет — единственная запись, которая тут реально нужна
+//   (для остальных 6 типов SHAPE_CREATORS не используется, пока модель не
+//   загрузится - см. createAndFillBoardOnPole).
+// - "custom" — обрабатывается отдельно через CustomShapeManager (загруженные
+//   пользователем модели) — пустой объект только чтобы setShapeSet('custom')
+//   прошло валидацию "такой набор существует".
 const SHAPE_CREATORS = {
     sphere: createSphere, cube: createCube, cone: createCone, cylinder: createCylinder,
     torus: createTorus, torusKnot: createTorusKnot, octahedron: createOctahedron, dodecahedron: createDodecahedron,
-    tradPawn: createTraditionalPawn, tradRook: createTraditionalRook, tradKnight: createTraditionalKnight,
-    tradBishop: createTraditionalBishop, tradQueen: createTraditionalQueen, tradKing: createTraditionalKing,
     tradTriort: createTraditionalTriort
 };
 const SHAPE_SETS = {
     default: { Pawn: 'cone', Rook: 'cube', Knight: 'torus', Bishop: 'sphere', Triort: 'octahedron', Queen: 'dodecahedron', King: 'torusKnot' },
-    traditional: { Pawn: 'tradPawn', Rook: 'tradRook', Knight: 'tradKnight', Bishop: 'tradBishop', Triort: 'tradTriort', Queen: 'tradQueen', King: 'tradKing' },
+    traditional: { Triort: 'tradTriort' },
     custom: {}
 };
 // Подписи для выпадающего списка в настройках.
 const SHAPE_SET_LABELS = { default: 'По умолчанию', traditional: 'Классический', custom: 'Свои формы' };
+
+// Вписывает загруженную модель (свободного масштаба/расположения) в тот же
+// размерный "бюджет", что и остальные фигуры (~0.9 по наибольшему измерению),
+// и центрирует — общая логика для CustomShapeManager и TraditionalModelManager.
+function normalizeLoadedModel(object, targetSize) {
+    const box = new THREE.Box3().setFromObject(object);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+
+    object.position.set(-center.x, -center.y, -center.z);
+    const wrapper = new THREE.Group();
+    wrapper.add(object);
+    wrapper.scale.setScalar((targetSize || 0.9) / maxDim);
+    return wrapper;
+}
+
+// Набор "Классический" — настоящие модели шахматных фигур (CC0, см.
+// chess/models/CREDITS.txt), решённые заранее под этот проект: у исходников
+// (3D-печатные STL) было 45-79 тысяч треугольников на фигуру - на порядок
+// больше, чем нужно вебу, и совершенно неприемлемо, когда одна и та же
+// фигура может стоять на доске в паре десятков экземпляров. Не загружаются
+// заранее при инициализации страницы (модели не нужны, пока не выбран этот
+// набор форм) — ensureLoaded() грузит все 6 разом при первом переключении на
+// "traditional" и кэширует навсегда.
+const TraditionalModelManager = {
+    models: {}, // { Pawn: THREE.Group (нормализованный шаблон), ... }
+    _loadingPromise: null,
+    PIECE_FILES: { Pawn: 'pawn.glb', Rook: 'rook.glb', Knight: 'knight.glb', Bishop: 'bishop.glb', Queen: 'queen.glb', King: 'king.glb' },
+
+    isReady() {
+        return Object.keys(this.PIECE_FILES).every((type) => !!this.models[type]);
+    },
+
+    ensureLoaded() {
+        if (this.isReady()) return Promise.resolve();
+        if (this._loadingPromise) return this._loadingPromise;
+        this._loadingPromise = Promise.all(
+            Object.entries(this.PIECE_FILES).map(([type, file]) => new Promise((resolve, reject) => {
+                new THREE.GLTFLoader().load('models/' + file, (gltf) => {
+                    this.models[type] = normalizeLoadedModel(gltf.scene, 0.95);
+                    resolve();
+                }, undefined, reject);
+            }))
+        );
+        return this._loadingPromise;
+    },
+
+    createMesh(pieceType, color) {
+        const template = this.models[pieceType];
+        if (!template) return null;
+        const clone = template.clone(true);
+        const material = buildFigureMaterial(color, { shininess: 300, specular: 0xCCCCCC });
+        clone.traverse((child) => { if (child.isMesh) child.material = material; });
+        return clone;
+    }
+};
 
 // "Свои формы" — загрузка модели (.glb/.gltf) на каждый тип фигуры отдельно.
 // Не персистится между страницами/перезагрузками (как и своя текстура) —
@@ -445,26 +428,10 @@ const CustomShapeManager = {
             const gltf = await new Promise((resolve, reject) => {
                 new THREE.GLTFLoader().load(url, resolve, undefined, reject);
             });
-            this.models[pieceType] = this._normalize(gltf.scene);
+            this.models[pieceType] = normalizeLoadedModel(gltf.scene, 0.9);
         } finally {
             URL.revokeObjectURL(url);
         }
-    },
-
-    // Загруженные модели бывают любого масштаба/расположения — вписываем в
-    // тот же примерный размерный "бюджет", что и остальные фигуры (~0.9 по
-    // наибольшему измерению), и центрируем, чтобы не улетали за пределы клетки.
-    _normalize(object) {
-        const box = new THREE.Box3().setFromObject(object);
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z) || 1;
-
-        object.position.set(-center.x, -center.y, -center.z);
-        const wrapper = new THREE.Group();
-        wrapper.add(object);
-        wrapper.scale.setScalar(0.9 / maxDim);
-        return wrapper;
     },
 
     hasType(pieceType) {
@@ -483,6 +450,59 @@ const CustomShapeManager = {
         return clone;
     }
 };
+
+// Восстанавливает сохранённое отображение сразу при загрузке скрипта — до
+// того, как какая-либо страница успеет построить доску со значениями по
+// умолчанию (Game.init()/PositionEditor.init()/инлайн-скрипты создают доску
+// уже ПОСЛЕ этого файла, т.к. подключены позже в HTML). Работает одинаково
+// на всех четырёх страницах, использующих этот файл. Должна идти именно
+// здесь, а не раньше — ссылается на TraditionalModelManager, а сама
+// исполняется немедленно (IIFE), так что не может стартовать раньше, чем
+// этот const реально объявлен.
+(function restoreStoredAppearance() {
+    const stored = AppearanceStore.load('chess');
+    if (!stored) return;
+
+    if (stored.colors) {
+        for (const [key, value] of Object.entries(stored.colors)) {
+            if (ColorManager.colors.hasOwnProperty(key)) ColorManager.colors[key] = value;
+        }
+    }
+    if (stored.bgTexture) {
+        TextureManager.backgroundTexture = TextureLibrary.get(stored.bgTexture);
+        TextureManager.backgroundTexturePresetName = stored.bgTexture;
+    }
+    if (stored.figureTexture) {
+        TextureManager.figureTexture = TextureLibrary.get(stored.figureTexture);
+        TextureManager.figureTexturePresetName = stored.figureTexture;
+    }
+    if (stored.shapeSet) {
+        TextureManager.shapeSet = stored.shapeSet;
+        // Восстановленный набор "Классический" ещё без моделей (они не
+        // персистятся, только выбор набора, см. persistAppearance) — первый
+        // рендер (сделает вызывающий код страницы, например Game.init())
+        // пойдёт с запасным "default", а как только модели догрузятся здесь,
+        // перерисовываем. createAndFillBoardOnPole ещё не объявлена в этой
+        // точке файла, но объявление function-выражением хостится, а .then
+        // сработает уже после того, как весь скрипт выполнится.
+        if (stored.shapeSet === 'traditional') {
+            TraditionalModelManager.ensureLoaded().then(() => {
+                // On some pages (e.g. puzzles.html, whose Game subclass is
+                // constructed on window 'load', not immediately) this can
+                // resolve before the page's own init has ever called
+                // ChessEngine.FillPole()/InitGame() - Pole is still its
+                // initial [] in that case. Nothing to (re)draw yet; that
+                // page's own init will render correctly once it runs, and by
+                // then TraditionalModelManager.isReady() is already true.
+                if (TextureManager.shapeSet === 'traditional' && ChessEngine.Pole && ChessEngine.Pole.length > 0) {
+                    createAndFillBoardOnPole(ChessEngine.Pole);
+                }
+            });
+        }
+    }
+
+    scene.background = TextureManager.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
+})();
 
 // Функция для создания случайной фигуры (запасная)
 function createRandomFigure() {
@@ -551,10 +571,14 @@ function createAndFillBoardOnPole(pole) {
                     figure.Color === 'White' ? GraphicsEngine.isWhiteFigure = true : GraphicsEngine.isBlackFigure = true ;
                     if (TextureManager.shapeSet === 'custom' && CustomShapeManager.hasType(figure.Name)) {
                         figureMesh = CustomShapeManager.createMesh(figure.Name, color);
+                    } else if (TextureManager.shapeSet === 'traditional' && TraditionalModelManager.models[figure.Name]) {
+                        figureMesh = TraditionalModelManager.createMesh(figure.Name, color);
                     } else {
-                        // Набор "custom" без загруженной модели для этого типа
-                        // (или неизвестный/устаревший сохранённый набор) —
-                        // используем форму "default", а не пустую клетку.
+                        // "custom" без загруженной модели для этого типа, или
+                        // "traditional" пока модели ещё грузятся (кроме Триорта —
+                        // для него в SHAPE_SETS.traditional есть tradTriort и
+                        // готовая модель никогда не нужна), или неизвестный/
+                        // устаревший сохранённый набор — используем "default".
                         const shapeName = (SHAPE_SETS[TextureManager.shapeSet] || SHAPE_SETS.default)[figure.Name]
                             || SHAPE_SETS.default[figure.Name];
                         const shapeCreator = SHAPE_CREATORS[shapeName];
