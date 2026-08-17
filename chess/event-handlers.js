@@ -165,6 +165,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Приводит цвет/текстура/форма-контролы к уже восстановленному из
+    // AppearanceStore состоянию (см. graphics.js) — иначе селекты показывали
+    // бы дефолт "Нет (цвет)"/"Классический", даже когда реально применено
+    // что-то другое.
+    GraphicsEngine.syncAppearanceUI();
+
     // Обработчик для чата (Enter)
     document.getElementById('chat-input')?.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {

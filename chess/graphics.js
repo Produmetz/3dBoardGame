@@ -99,6 +99,7 @@ const ColorManager = {
 
         // Перерисовываем доску с новыми цветами
         redrawBoardWithNewColors();
+        persistAppearance();
     }
 };
 
@@ -109,31 +110,82 @@ const ColorManager = {
 // а не лёгкий redrawBoardWithNewColors (тот только красит существующие материалы).
 const TextureManager = {
     figureTexture: null,
+    figureTexturePresetName: null, // null = либо "нет текстуры", либо своя картинка (не персистится)
     backgroundTexture: null,
+    backgroundTexturePresetName: null,
     shapeSet: 'classic',
 
     setFigurePreset(name) {
         this.figureTexture = name ? TextureLibrary.get(name) : null;
+        this.figureTexturePresetName = name || null;
         createAndFillBoardOnPole(ChessEngine.Pole);
+        persistAppearance();
     },
     async setFigureCustom(file) {
         this.figureTexture = await TextureLibrary.fromFile(file);
+        this.figureTexturePresetName = null; // своя картинка не сохраняется между страницами, см. persistAppearance
         createAndFillBoardOnPole(ChessEngine.Pole);
     },
     setBackgroundPreset(name) {
         this.backgroundTexture = name ? TextureLibrary.get(name) : null;
+        this.backgroundTexturePresetName = name || null;
         scene.background = this.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
+        persistAppearance();
     },
     async setBackgroundCustom(file) {
         this.backgroundTexture = await TextureLibrary.fromFile(file);
+        this.backgroundTexturePresetName = null;
         scene.background = this.backgroundTexture;
     },
     setShapeSet(name) {
         if (!SHAPE_SETS[name]) return;
         this.shapeSet = name;
         createAndFillBoardOnPole(ChessEngine.Pole);
+        persistAppearance();
     }
 };
+
+// Сохраняет текущее отображение в AppearanceStore ('chess' — отдельно от Го,
+// см. appearance.js) при любом изменении цвета/текстуры/формы, на любой из
+// четырёх шахматных страниц. Своя загруженная картинка не сохраняется —
+// пришлось бы вшивать data URL в localStorage, а это может быть мегабайты.
+function persistAppearance() {
+    AppearanceStore.save('chess', {
+        colors: ColorManager.colors,
+        bgTexture: TextureManager.backgroundTexturePresetName,
+        figureTexture: TextureManager.figureTexturePresetName,
+        shapeSet: TextureManager.shapeSet
+    });
+}
+
+// Восстанавливает сохранённое отображение сразу при загрузке скрипта — до
+// того, как какая-либо страница успеет построить доску со значениями по
+// умолчанию (Game.init()/PositionEditor.init()/инлайн-скрипты создают доску
+// уже ПОСЛЕ этого файла, т.к. подключены позже в HTML). Работает одинаково
+// на всех четырёх страницах, использующих этот файл.
+(function restoreStoredAppearance() {
+    const stored = AppearanceStore.load('chess');
+    if (!stored) return;
+
+    if (stored.colors) {
+        for (const [key, value] of Object.entries(stored.colors)) {
+            if (ColorManager.colors.hasOwnProperty(key)) ColorManager.colors[key] = value;
+        }
+    }
+    if (stored.bgTexture) {
+        TextureManager.backgroundTexture = TextureLibrary.get(stored.bgTexture);
+        TextureManager.backgroundTexturePresetName = stored.bgTexture;
+    }
+    if (stored.figureTexture) {
+        TextureManager.figureTexture = TextureLibrary.get(stored.figureTexture);
+        TextureManager.figureTexturePresetName = stored.figureTexture;
+    }
+    if (stored.shapeSet) {
+        TextureManager.shapeSet = stored.shapeSet;
+    }
+
+    scene.background = TextureManager.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
+})();
 
 
 
@@ -408,6 +460,18 @@ function changeCellOpacity(x, y, z, value) {
     cubeObjects[x][y][z].material.opacity = value;
 }
 
+// Красит материал фигуры в клетке. Большинство фигур — один Mesh
+// (cell.children[0].material существует напрямую), но "звезда" (форма Коня
+// в альтернативном наборе, см. createStar) — THREE.Group из двух конусов со
+// своим материалом на каждом, у самой Group материала нет — красим детей.
+function setFigureMeshColor(cellChild, color) {
+    if (cellChild.material) {
+        cellChild.material.color.set(color);
+    } else if (cellChild.children) {
+        cellChild.children.forEach((child) => child.material?.color.set(color));
+    }
+}
+
 // Функция для перерисовки доски с новыми цветами
 function redrawBoardWithNewColors() {
     // Удаляем старые клетки
@@ -423,7 +487,7 @@ function redrawBoardWithNewColors() {
                     const colorFigure = ChessEngine.Pole[x][y][z].Color === 'White' ?
                         ColorManager.colors.whiteFigureColor :
                         ColorManager.colors.blackFigureColor;
-                    cubeObjects[x][y][z].children[0].material.color.set(colorFigure);
+                    setFigureMeshColor(cubeObjects[x][y][z].children[0], colorFigure);
                 }
 
             }
@@ -456,13 +520,18 @@ function unHighlightingPossibleMoves() {
     });
     GraphicsEngine.highlightedPossibleMoves = [];
 }
-// Функция для подсветки короля
+// Функция для подсветки короля. Идентифицируем короля по ChessEngine.Pole,
+// не по форме меша — раньше это был King === 'TorusKnotGeometry' (форма
+// короля в классическом наборе форм), что ломалось при выборе
+// альтернативного набора (там король — тетраэдр) и вообще не должно было
+// зависеть от того, какая геометрия выбрана для отображения.
 function highlightKing(color) {
     for (let x = 0; x < gridSizeX; x++) {
         for (let y = 0; y < gridSizeY; y++) {
             for (let z = 0; z < gridSizeZ; z++) {
-                if (ChessEngine.Pole[x][y][z] != null && cubeObjects[x][y][z].children[0].geometry.type === "TorusKnotGeometry" && ChessEngine.Pole[x][y][z].Color == color) {
-                    cubeObjects[x][y][z].children[0].material.color.set(ColorManager.colors.dangerKingColor);
+                const piece = ChessEngine.Pole[x][y][z];
+                if (piece != null && piece.Name === 'King' && piece.Color == color) {
+                    setFigureMeshColor(cubeObjects[x][y][z].children[0], ColorManager.colors.dangerKingColor);
                     return; // Нашли короля, выходим
                 };
             }
@@ -486,8 +555,9 @@ function unhighlightKing() {
     for (let x = 0; x < gridSizeX; x++) {
         for (let y = 0; y < gridSizeY; y++) {
             for (let z = 0; z < gridSizeZ; z++) {
-                if (ChessEngine.Pole[x][y][z] != null && cubeObjects[x][y][z].children[0].geometry.type === "TorusKnotGeometry") {
-                    cubeObjects[x][y][z].children[0].material.color.set(ChessEngine.Pole[x][y][z].Color === 'White' ?
+                const piece = ChessEngine.Pole[x][y][z];
+                if (piece != null && piece.Name === 'King') {
+                    setFigureMeshColor(cubeObjects[x][y][z].children[0], piece.Color === 'White' ?
                         ColorManager.colors.whiteFigureColor :
                         ColorManager.colors.blackFigureColor);
                 }
@@ -583,5 +653,23 @@ window.GraphicsEngine = {
     getShapeSet: () => TextureManager.shapeSet,
     figureTexturePresets: TextureLibrary.figurePresets,
     backgroundTexturePresets: TextureLibrary.backgroundPresets,
-    shapeSets: SHAPE_SET_LABELS
+    shapeSets: SHAPE_SET_LABELS,
+    // Приводит элементы формы настроек (если они есть на текущей странице —
+    // не на всех четырёх есть текстуры/форма) в соответствие с тем, что
+    // сейчас реально применено (включая восстановленное из AppearanceStore
+    // при загрузке страницы). Вызывать после того, как <option> пресетов
+    // уже вставлены в select'ы.
+    syncAppearanceUI: function () {
+        const hex = (n) => '#' + n.toString(16).padStart(6, '0');
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        const c = ColorManager.colors;
+        setVal('bg-color', hex(c.backgroundColor));
+        setVal('board-color-1', hex(c.boardColor1));
+        setVal('board-color-2', hex(c.boardColor2));
+        setVal('white-figures-color', hex(c.whiteFigureColor));
+        setVal('black-figures-color', hex(c.blackFigureColor));
+        setVal('bg-texture', TextureManager.backgroundTexturePresetName || '');
+        setVal('figure-texture', TextureManager.figureTexturePresetName || '');
+        setVal('shape-set', TextureManager.shapeSet);
+    }
 };

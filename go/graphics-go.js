@@ -69,6 +69,7 @@ const ColorManager = {
         if (window.goGame && window.goGame.board) {
             redrawBoardWithNewColors(window.goGame.board);
         }
+        persistAppearance();
     }
 };
 
@@ -77,25 +78,64 @@ const ColorManager = {
 // здесь нет — только текстура.
 const TextureManager = {
     figureTexture: null,
+    figureTexturePresetName: null,
     backgroundTexture: null,
+    backgroundTexturePresetName: null,
 
     setFigurePreset(name) {
         this.figureTexture = name ? TextureLibrary.get(name) : null;
+        this.figureTexturePresetName = name || null;
         if (window.goGame && window.goGame.board) createAndFillBoardForGo(window.goGame.board);
+        persistAppearance();
     },
     async setFigureCustom(file) {
         this.figureTexture = await TextureLibrary.fromFile(file);
+        this.figureTexturePresetName = null; // своя картинка не сохраняется между страницами
         if (window.goGame && window.goGame.board) createAndFillBoardForGo(window.goGame.board);
     },
     setBackgroundPreset(name) {
         this.backgroundTexture = name ? TextureLibrary.get(name) : null;
+        this.backgroundTexturePresetName = name || null;
         scene.background = this.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
+        persistAppearance();
     },
     async setBackgroundCustom(file) {
         this.backgroundTexture = await TextureLibrary.fromFile(file);
+        this.backgroundTexturePresetName = null;
         scene.background = this.backgroundTexture;
     }
 };
+
+// См. подробный комментарий у persistAppearance/restoreStoredAppearance в
+// chess/graphics.js — логика идентична, ключ 'go' отдельный от 'chess'.
+function persistAppearance() {
+    AppearanceStore.save('go', {
+        colors: ColorManager.colors,
+        bgTexture: TextureManager.backgroundTexturePresetName,
+        figureTexture: TextureManager.figureTexturePresetName
+    });
+}
+
+(function restoreStoredAppearance() {
+    const stored = AppearanceStore.load('go');
+    if (!stored) return;
+
+    if (stored.colors) {
+        for (const [key, value] of Object.entries(stored.colors)) {
+            if (ColorManager.colors.hasOwnProperty(key)) ColorManager.colors[key] = value;
+        }
+    }
+    if (stored.bgTexture) {
+        TextureManager.backgroundTexture = TextureLibrary.get(stored.bgTexture);
+        TextureManager.backgroundTexturePresetName = stored.bgTexture;
+    }
+    if (stored.figureTexture) {
+        TextureManager.figureTexture = TextureLibrary.get(stored.figureTexture);
+        TextureManager.figureTexturePresetName = stored.figureTexture;
+    }
+
+    scene.background = TextureManager.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
+})();
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -328,7 +368,20 @@ window.GraphicsEngine = {
     setBackgroundTexturePreset: (name) => TextureManager.setBackgroundPreset(name),
     setBackgroundTextureCustom: (file) => TextureManager.setBackgroundCustom(file),
     figureTexturePresets: TextureLibrary.figurePresets,
-    backgroundTexturePresets: TextureLibrary.backgroundPresets
+    backgroundTexturePresets: TextureLibrary.backgroundPresets,
+    // См. комментарий у одноимённого метода в chess/graphics.js.
+    syncAppearanceUI: function () {
+        const hex = (n) => '#' + n.toString(16).padStart(6, '0');
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        const c = ColorManager.colors;
+        setVal('bg-color', hex(c.backgroundColor));
+        setVal('board-color-1', hex(c.boardColor1));
+        setVal('board-color-2', hex(c.boardColor2));
+        setVal('white-figures-color', hex(c.whiteFigureColor));
+        setVal('black-figures-color', hex(c.blackFigureColor));
+        setVal('bg-texture', TextureManager.backgroundTexturePresetName || '');
+        setVal('figure-texture', TextureManager.figureTexturePresetName || '');
+    }
 };
 
 // Запуск анимации

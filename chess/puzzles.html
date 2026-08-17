@@ -127,6 +127,7 @@
 
     <script src="../ui-feedback.js"></script>
     <script src="chess-engine.js"></script>
+    <script src="../appearance.js"></script>
     <script src="../textures.js"></script>
     <script src="graphics.js"></script>
     <script src="game.js"></script>
@@ -198,6 +199,7 @@
                     element.addEventListener('input', (e) => colorPickers[id](e.target.value));
                 }
             });
+            GraphicsEngine.syncAppearanceUI();
 
             canvas.addEventListener('contextmenu', (e) => {
                 e.preventDefault();

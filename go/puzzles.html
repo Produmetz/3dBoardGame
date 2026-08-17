@@ -124,6 +124,7 @@
 
     <script src="../ui-feedback.js"></script>
     <script src="go-engine_v2.js"></script>
+    <script src="../appearance.js"></script>
     <script src="../textures.js"></script>
     <script src="graphics-go.js"></script>
     <script src="../network.js"></script>
@@ -201,6 +202,7 @@
                     GraphicsEngine.updateColors(colors);
                 });
             });
+            GraphicsEngine.syncAppearanceUI();
 
             canvas.addEventListener('contextmenu', (e) => {
                 e.preventDefault();

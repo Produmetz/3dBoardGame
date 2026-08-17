@@ -149,6 +149,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.files[0]) GraphicsEngine.setFigureTextureCustom(e.target.files[0]);
     });
 
+    // См. комментарий у аналогичного вызова в chess/event-handlers.js.
+    GraphicsEngine.syncAppearanceUI();
+
     document.getElementById('chat-input')?.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
             window.goGame?.sendChatMessage();
