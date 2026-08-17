@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Генератор шахматных позиций</title>
+    <title>Редактор позиций Го</title>
     <link rel="stylesheet" href="../tokens.css">
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="../nav.css">
@@ -28,33 +28,16 @@
         </div>
 
         <div class="panel-section">
-            <h3>Выбранный инструмент</h3>
-            <div class="panel-content">
-                <div id="selected-figure-name">Выберите фигуру</div>
-                <div id="figure-description" style="margin-top:6px; color: var(--color-text-secondary); font-size:0.85em;">
-                    Кликните на клетку чтобы поставить фигуру
-                </div>
-            </div>
-        </div>
-
-        <div class="panel-section">
-            <h3>Фигуры</h3>
+            <h3>Камень</h3>
             <div class="panel-content">
                 <div class="buttons-row">
-                    <button type="button" class="game-btn figure-item" data-figure="Pawn">Пешка</button>
-                    <button type="button" class="game-btn figure-item" data-figure="Rook">Ладья</button>
-                    <button type="button" class="game-btn figure-item" data-figure="Knight">Конь</button>
-                    <button type="button" class="game-btn figure-item" data-figure="Bishop">Слон</button>
-                    <button type="button" class="game-btn figure-item" data-figure="Triort">Триорт</button>
-                    <button type="button" class="game-btn figure-item" data-figure="Queen">Ферзь</button>
-                    <button type="button" class="game-btn figure-item" data-figure="King">Король</button>
-                    <button type="button" class="game-btn figure-item" data-figure="Eraser">Ластик</button>
+                    <button type="button" class="game-btn stone-item" data-stone="Black">⚫ Чёрный</button>
+                    <button type="button" class="game-btn stone-item" data-stone="White">⚪ Белый</button>
+                    <button type="button" class="game-btn stone-item" data-stone="Eraser">Ластик</button>
                 </div>
-                <h4 style="margin-top:12px;">Цвет фигур</h4>
-                <div class="buttons-row">
-                    <button id="color-white" class="axis-btn active">Белые</button>
-                    <button id="color-black" class="axis-btn">Чёрные</button>
-                </div>
+                <p id="stone-description" style="margin-top:8px; color: var(--color-text-secondary); font-size:0.85em;">
+                    Кликните на клетку, чтобы поставить камень.
+                </p>
             </div>
         </div>
 
@@ -62,8 +45,8 @@
             <h3>Чей ход</h3>
             <div class="panel-content">
                 <div class="buttons-row">
-                    <button id="turn-white" class="axis-btn active">Белых</button>
-                    <button id="turn-black" class="axis-btn">Чёрных</button>
+                    <button id="turn-black" class="axis-btn active">Чёрных</button>
+                    <button id="turn-white" class="axis-btn">Белых</button>
                 </div>
             </div>
         </div>
@@ -73,16 +56,34 @@
             <div class="panel-content">
                 <div class="buttons-row">
                     <button id="clear-all" class="game-btn">Очистить доску</button>
-                    <a href="chess.html" class="game-btn" style="background:#4cc9f0;color:#0a192f;">Вернуться в игру</a>
+                    <a href="go.html" class="game-btn" style="background:#4cc9f0;color:#0a192f;">Вернуться в игру</a>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Модалка настроек: отображение, файлы, справка -->
+    <!-- Модалка настроек: размер поля, отображение, файлы, справка -->
     <div class="modal-overlay" id="settings-modal">
         <div class="modal">
             <h3>Настройки</h3>
+
+            <div class="sub-section collapsed">
+                <h4>Размер поля</h4>
+                <div class="sub-content">
+                    <label>X: <input type="number" id="go-size-x" value="4" min="3" max="10"></label>
+                    <label>Y: <input type="number" id="go-size-y" value="4" min="3" max="10"></label>
+                    <label>Z: <input type="number" id="go-size-z" value="4" min="3" max="10"></label>
+                    <label>Коми: <input type="number" id="go-komi" value="6.5" step="0.5" min="0" max="100"></label>
+                    <label>Правила:
+                        <select id="go-rule-set" class="game-btn" style="width: auto; padding: 4px 8px;">
+                            <option value="chinese" selected>Китайские</option>
+                            <option value="japanese">Японские</option>
+                            <option value="korean">Корейские</option>
+                        </select>
+                    </label>
+                    <button id="apply-go-size" class="game-btn">Применить</button>
+                </div>
+            </div>
 
             <div class="sub-section collapsed">
                 <h4>Отображение</h4>
@@ -101,11 +102,11 @@
                             <input type="color" id="board-color-2" class="color-input" value="#0a192f">
                         </div>
                         <div class="color-input-container">
-                            <label for="white-figures-color">Белые фигуры:</label>
+                            <label for="white-figures-color">Белые камни:</label>
                             <input type="color" id="white-figures-color" class="color-input" value="#FFFFFF">
                         </div>
                         <div class="color-input-container">
-                            <label for="black-figures-color">Черные фигуры:</label>
+                            <label for="black-figures-color">Чёрные камни:</label>
                             <input type="color" id="black-figures-color" class="color-input" value="#000000">
                         </div>
                     </div>
@@ -118,8 +119,8 @@
                     <div class="buttons-row">
                         <button id="save-position" class="game-btn">Сохранить позицию</button>
                     </div>
-                    <div class="file-input-wrapper" style="margin-top:8px; position:relative; overflow:hidden; display:block; width:100%;">
-                        <input type="file" id="load-position" accept=".txt" style="position:absolute; left:0; top:0; opacity:0; width:100%; height:100%; cursor:pointer;">
+                    <div class="file-input-wrapper" style="margin-top:8px;">
+                        <input type="file" id="load-position" accept=".txt">
                         <label for="load-position" class="game-btn" style="display:block; text-align:center; width:100%;">Загрузить позицию</label>
                     </div>
                 </div>
@@ -128,12 +129,10 @@
             <div class="sub-section collapsed">
                 <h4>Справка</h4>
                 <div class="sub-content">
-                    <p>• Выберите фигуру и цвет, затем кликните на клетку, чтобы поставить фигуру</p>
-                    <p>• Используйте ластик для удаления фигур с доски</p>
-                    <p>• Сохраняйте созданные позиции в файл и загружайте ранее сохранённые</p>
-                    <p>• Выберите, чей ход будет следующим</p>
+                    <p>• Выберите цвет камня, затем кликните на клетку, чтобы его поставить</p>
+                    <p>• Используйте ластик для удаления камня с доски</p>
+                    <p>• Сохранённые здесь позиции можно загрузить прямо в игре — формат тот же</p>
                     <p>• Кнопки осей (X/Y/Z) рядом с доской — увеличенное расстояние между ячейками поля вдоль выбранной оси</p>
-                    <p>• Вернитесь в игру, чтобы протестировать созданную позицию</p>
                 </div>
             </div>
 
@@ -146,12 +145,12 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
     <script src="../ui-feedback.js"></script>
-    <script src="chess-engine.js"></script>
-    <script src="graphics.js"></script>
+    <script src="go-engine_v2.js"></script>
+    <script src="graphics-go.js"></script>
     <script src="position-editor.js"></script>
     <script src="../nav.js"></script>
     <script>
-        Nav.init('position-editor');
+        Nav.init('position-editor-go');
 
         document.getElementById('toggle-panels').addEventListener('click', () => {
             document.getElementById('game-panel')?.classList.toggle('hidden');
@@ -169,12 +168,15 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') document.getElementById('settings-modal')?.classList.remove('active');
         });
+
         document.querySelectorAll('.sub-section h4').forEach(header => {
             header.addEventListener('click', function () {
                 this.parentElement.classList.toggle('collapsed');
             });
         });
 
+        // Цветовые пикеры — GraphicsEngine.updateColors требует window.goGame.board,
+        // которое position-editor.js уже поддерживает как заглушку.
         const colorPickers = {
             'bg-color': 'backgroundColor',
             'board-color-1': 'boardColor1',
