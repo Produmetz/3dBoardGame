@@ -512,12 +512,19 @@ const TraditionalModelManager = {
         return this._loadingPromise;
     },
 
-    createMesh(pieceType, color) {
+    createMesh(pieceType, color, figureColor) {
         const template = this.models[pieceType];
         if (!template) return null;
         const clone = template.clone(true);
         const material = buildFigureMaterial(color, { shininess: 300, specular: 0xCCCCCC });
         clone.traverse((child) => { if (child.isMesh) child.material = material; });
+        // Исходная модель коня "смотрит" в одну сторону — у белых это
+        // выглядело задом наперёд. Разворачиваем на 180° вокруг вертикальной
+        // оси (Y — самое длинное измерение фигуры, стоящей на доске), только
+        // для белых, чтобы кони обеих сторон смотрели друг на друга.
+        if (pieceType === 'Knight' && figureColor === 'White') {
+            clone.rotation.y += Math.PI;
+        }
         return clone;
     }
 };
@@ -698,7 +705,7 @@ function createAndFillBoardOnPole(pole) {
                     if (TextureManager.shapeSet === 'custom' && CustomShapeManager.hasType(figure.Name)) {
                         figureMesh = CustomShapeManager.createMesh(figure.Name, color);
                     } else if (TextureManager.shapeSet === 'traditional' && TraditionalModelManager.models[figure.Name]) {
-                        figureMesh = TraditionalModelManager.createMesh(figure.Name, color);
+                        figureMesh = TraditionalModelManager.createMesh(figure.Name, color, figure.Color);
                     } else {
                         // "custom" без загруженной модели для этого типа, или
                         // "traditional" пока модели ещё грузятся (кроме Триорта —
