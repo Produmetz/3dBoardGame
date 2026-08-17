@@ -112,6 +112,43 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Текстуры фона/камней — см. подробный комментарий в chess/event-handlers.js.
+    // У Го нет разных форм фигур (камни всегда сферы), так что набора форм тут нет.
+    function populatePresetSelect(selectId, presets) {
+        const select = document.getElementById(selectId);
+        if (!select || !presets) return;
+        Object.entries(presets).forEach(([key, label]) => {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = label;
+            select.insertBefore(opt, select.lastElementChild); // перед "Своя картинка…"
+        });
+    }
+    populatePresetSelect('bg-texture', GraphicsEngine.backgroundTexturePresets);
+    populatePresetSelect('figure-texture', GraphicsEngine.figureTexturePresets);
+
+    document.getElementById('bg-texture')?.addEventListener('change', (e) => {
+        if (e.target.value === 'custom') {
+            document.getElementById('bg-texture-file')?.click();
+        } else {
+            GraphicsEngine.setBackgroundTexturePreset(e.target.value || null);
+        }
+    });
+    document.getElementById('bg-texture-file')?.addEventListener('change', (e) => {
+        if (e.target.files[0]) GraphicsEngine.setBackgroundTextureCustom(e.target.files[0]);
+    });
+
+    document.getElementById('figure-texture')?.addEventListener('change', (e) => {
+        if (e.target.value === 'custom') {
+            document.getElementById('figure-texture-file')?.click();
+        } else {
+            GraphicsEngine.setFigureTexturePreset(e.target.value || null);
+        }
+    });
+    document.getElementById('figure-texture-file')?.addEventListener('change', (e) => {
+        if (e.target.files[0]) GraphicsEngine.setFigureTextureCustom(e.target.files[0]);
+    });
+
     document.getElementById('chat-input')?.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
             window.goGame?.sendChatMessage();

@@ -174,6 +174,29 @@
             </div>
 
             <div class="sub-section collapsed">
+                <h4>Текстуры</h4>
+                <div class="sub-content">
+                    <div class="color-input-container">
+                        <label for="bg-texture">Текстура фона:</label>
+                        <select id="bg-texture" class="game-btn" style="width:auto; padding:4px 8px;">
+                            <option value="">Нет (цвет)</option>
+                            <option value="custom">Своя картинка…</option>
+                        </select>
+                    </div>
+                    <input type="file" id="bg-texture-file" accept="image/*" style="display:none;">
+
+                    <div class="color-input-container" style="margin-top:8px;">
+                        <label for="figure-texture">Текстура камней:</label>
+                        <select id="figure-texture" class="game-btn" style="width:auto; padding:4px 8px;">
+                            <option value="">Нет (цвет)</option>
+                            <option value="custom">Своя картинка…</option>
+                        </select>
+                    </div>
+                    <input type="file" id="figure-texture-file" accept="image/*" style="display:none;">
+                </div>
+            </div>
+
+            <div class="sub-section collapsed">
                 <h4>Размер поля для новой игры</h4>
                 <div class="sub-content">
                     <label>X: <input type="number" id="go-size-x" value="4" min="3" max="10"></label>
@@ -261,6 +284,7 @@
     <script src="go-engine_v2.js"></script>
     <script src="go-bot-core.js"></script>
     <script src="go-bot.js"></script>
+    <script src="../textures.js"></script>
     <script src="graphics-go.js"></script>
     <script src="../network.js"></script>
     <script src="game-go.js"></script>

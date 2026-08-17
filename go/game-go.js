@@ -984,7 +984,11 @@ class GoGame {
             boardColor1: document.getElementById('board-color-1').value,
             boardColor2: document.getElementById('board-color-2').value,
             whiteFiguresColor: document.getElementById('white-figures-color').value,
-            blackFiguresColor: document.getElementById('black-figures-color').value
+            blackFiguresColor: document.getElementById('black-figures-color').value,
+            // Только пресеты по имени — своя картинка не сериализуется, см. тот
+            // же комментарий в chess/game.js.
+            bgTexture: document.getElementById('bg-texture')?.value !== 'custom' ? (document.getElementById('bg-texture')?.value || '') : '',
+            figureTexture: document.getElementById('figure-texture')?.value !== 'custom' ? (document.getElementById('figure-texture')?.value || '') : ''
         };
         const dataStr = JSON.stringify(settings);
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
@@ -1010,6 +1014,15 @@ class GoGame {
                 this.changeColor('board2', settings.boardColor2);
                 this.changeColor('whiteFigure', settings.whiteFiguresColor);
                 this.changeColor('blackFigure', settings.blackFiguresColor);
+
+                if (settings.bgTexture !== undefined) {
+                    document.getElementById('bg-texture').value = settings.bgTexture;
+                    GraphicsEngine.setBackgroundTexturePreset(settings.bgTexture || null);
+                }
+                if (settings.figureTexture !== undefined) {
+                    document.getElementById('figure-texture').value = settings.figureTexture;
+                    GraphicsEngine.setFigureTexturePreset(settings.figureTexture || null);
+                }
 
                 UI.toast('Настройки успешно загружены!', 'success');
             } catch (error) {

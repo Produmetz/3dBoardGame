@@ -169,6 +169,34 @@
             </div>
 
             <div class="sub-section collapsed">
+                <h4>Текстуры и форма фигур</h4>
+                <div class="sub-content">
+                    <div class="color-input-container">
+                        <label for="bg-texture">Текстура фона:</label>
+                        <select id="bg-texture" class="game-btn" style="width:auto; padding:4px 8px;">
+                            <option value="">Нет (цвет)</option>
+                            <option value="custom">Своя картинка…</option>
+                        </select>
+                    </div>
+                    <input type="file" id="bg-texture-file" accept="image/*" style="display:none;">
+
+                    <div class="color-input-container" style="margin-top:8px;">
+                        <label for="figure-texture">Текстура фигур:</label>
+                        <select id="figure-texture" class="game-btn" style="width:auto; padding:4px 8px;">
+                            <option value="">Нет (цвет)</option>
+                            <option value="custom">Своя картинка…</option>
+                        </select>
+                    </div>
+                    <input type="file" id="figure-texture-file" accept="image/*" style="display:none;">
+
+                    <div class="color-input-container" style="margin-top:8px;">
+                        <label for="shape-set">Форма фигур:</label>
+                        <select id="shape-set" class="game-btn" style="width:auto; padding:4px 8px;"></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sub-section collapsed">
                 <h4>Файл</h4>
                 <div class="sub-content">
                     <div class="buttons-row">
@@ -254,6 +282,7 @@
     <script src="chess-engine.js"></script>
     <script src="chess-bot-core.js"></script>
     <script src="chess-bot.js"></script>
+    <script src="../textures.js"></script>
     <script src="graphics.js"></script>
     <script src="../network.js"></script>
     <script src="game.js"></script>

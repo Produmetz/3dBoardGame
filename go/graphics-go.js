@@ -64,11 +64,36 @@ const ColorManager = {
                 this.colors[key] = value;
             }
         }
-        scene.background = new THREE.Color(this.colors.backgroundColor);
+        scene.background = TextureManager.backgroundTexture || new THREE.Color(this.colors.backgroundColor);
         // Перерисовка доски должна быть вызвана отдельно, т.к. нужна актуальная доска
         if (window.goGame && window.goGame.board) {
             redrawBoardWithNewColors(window.goGame.board);
         }
+    }
+};
+
+// Текстуры фона/камней — см. подробный комментарий в chess/graphics.js,
+// логика та же. У камней Го нет разных типов фигур, так что набора форм
+// здесь нет — только текстура.
+const TextureManager = {
+    figureTexture: null,
+    backgroundTexture: null,
+
+    setFigurePreset(name) {
+        this.figureTexture = name ? TextureLibrary.get(name) : null;
+        if (window.goGame && window.goGame.board) createAndFillBoardForGo(window.goGame.board);
+    },
+    async setFigureCustom(file) {
+        this.figureTexture = await TextureLibrary.fromFile(file);
+        if (window.goGame && window.goGame.board) createAndFillBoardForGo(window.goGame.board);
+    },
+    setBackgroundPreset(name) {
+        this.backgroundTexture = name ? TextureLibrary.get(name) : null;
+        scene.background = this.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
+    },
+    async setBackgroundCustom(file) {
+        this.backgroundTexture = await TextureLibrary.fromFile(file);
+        scene.background = this.backgroundTexture;
     }
 };
 
@@ -86,6 +111,7 @@ function createSphere(color) {
     const geometry = stoneGeometry;
     const material = new THREE.MeshPhongMaterial({
         color: color,
+        map: TextureManager.figureTexture,
         shininess: 800,
         specular: 0xFFFFFF,
         emissive: 0x000011,
@@ -296,7 +322,13 @@ window.GraphicsEngine = {
     onWindowResize,
     updateColors: ColorManager.updateColors.bind(ColorManager),
     getColors: () => ColorManager.colors,
-    hexToColor: ColorManager.hexToColor
+    hexToColor: ColorManager.hexToColor,
+    setFigureTexturePreset: (name) => TextureManager.setFigurePreset(name),
+    setFigureTextureCustom: (file) => TextureManager.setFigureCustom(file),
+    setBackgroundTexturePreset: (name) => TextureManager.setBackgroundPreset(name),
+    setBackgroundTextureCustom: (file) => TextureManager.setBackgroundCustom(file),
+    figureTexturePresets: TextureLibrary.figurePresets,
+    backgroundTexturePresets: TextureLibrary.backgroundPresets
 };
 
 // Запуск анимации

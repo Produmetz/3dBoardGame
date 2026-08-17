@@ -604,7 +604,13 @@ class Game {
             boardColor1: document.getElementById('board-color-1').value,
             boardColor2: document.getElementById('board-color-2').value,
             whiteFiguresColor: document.getElementById('white-figures-color').value,
-            blackFiguresColor: document.getElementById('black-figures-color').value
+            blackFiguresColor: document.getElementById('black-figures-color').value,
+            // Только пресеты по имени — свою загруженную картинку не сериализовать
+            // в JSON без раздувания файла (пришлось бы вшивать data URL); "custom"
+            // тут не сохраняется, только выбор из стандартного набора.
+            bgTexture: document.getElementById('bg-texture')?.value !== 'custom' ? (document.getElementById('bg-texture')?.value || '') : '',
+            figureTexture: document.getElementById('figure-texture')?.value !== 'custom' ? (document.getElementById('figure-texture')?.value || '') : '',
+            shapeSet: document.getElementById('shape-set')?.value || 'classic'
         };
 
         const dataStr = JSON.stringify(settings);
@@ -634,6 +640,19 @@ class Game {
                 this.changeColor('board2', settings.boardColor2);
                 this.changeColor('whiteFigure', settings.whiteFiguresColor);
                 this.changeColor('blackFigure', settings.blackFiguresColor);
+
+                if (settings.bgTexture !== undefined) {
+                    document.getElementById('bg-texture').value = settings.bgTexture;
+                    GraphicsEngine.setBackgroundTexturePreset(settings.bgTexture || null);
+                }
+                if (settings.figureTexture !== undefined) {
+                    document.getElementById('figure-texture').value = settings.figureTexture;
+                    GraphicsEngine.setFigureTexturePreset(settings.figureTexture || null);
+                }
+                if (settings.shapeSet) {
+                    document.getElementById('shape-set').value = settings.shapeSet;
+                    GraphicsEngine.setShapeSet(settings.shapeSet);
+                }
 
                 UI.toast('Настройки успешно загружены!', 'success');
             } catch (error) {

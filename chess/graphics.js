@@ -92,11 +92,46 @@ const ColorManager = {
             }
         }
 
-        // Обновляем фон сцены
-        scene.background = new THREE.Color(this.colors.backgroundColor);
+        // Обновляем фон сцены — если активна текстура фона, цвет её не
+        // перекрывает (TextureManager.setBackgroundPreset/Custom сами
+        // выставляют scene.background и это единственный способ его сбросить).
+        scene.background = TextureManager.backgroundTexture || new THREE.Color(this.colors.backgroundColor);
 
         // Перерисовываем доску с новыми цветами
         redrawBoardWithNewColors();
+    }
+};
+
+// Текстуры фона/фигур и набор форм фигур — отдельно от ColorManager, т.к. это
+// не цвета, а THREE.Texture/выбор геометрии. Смена текстуры или набора форм
+// требует пересоздания мешей (текстура — часть material, назначается при
+// создании), поэтому оба сеттера дёргают полный createAndFillBoardOnPole,
+// а не лёгкий redrawBoardWithNewColors (тот только красит существующие материалы).
+const TextureManager = {
+    figureTexture: null,
+    backgroundTexture: null,
+    shapeSet: 'classic',
+
+    setFigurePreset(name) {
+        this.figureTexture = name ? TextureLibrary.get(name) : null;
+        createAndFillBoardOnPole(ChessEngine.Pole);
+    },
+    async setFigureCustom(file) {
+        this.figureTexture = await TextureLibrary.fromFile(file);
+        createAndFillBoardOnPole(ChessEngine.Pole);
+    },
+    setBackgroundPreset(name) {
+        this.backgroundTexture = name ? TextureLibrary.get(name) : null;
+        scene.background = this.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
+    },
+    async setBackgroundCustom(file) {
+        this.backgroundTexture = await TextureLibrary.fromFile(file);
+        scene.background = this.backgroundTexture;
+    },
+    setShapeSet(name) {
+        if (!SHAPE_SETS[name]) return;
+        this.shapeSet = name;
+        createAndFillBoardOnPole(ChessEngine.Pole);
     }
 };
 
@@ -136,78 +171,67 @@ function disposeCellContents(cell) {
     }
 }
 
+// Общий материал для фигур — читает активную текстуру из TextureManager
+// (map: null просто означает "нет текстуры", MeshPhongMaterial тогда ведёт
+// себя как раньше, чистый цвет). Текстура тонируется color'ом фигуры, см.
+// комментарий в TextureManager.
+function buildFigureMaterial(color, extra) {
+    return new THREE.MeshPhongMaterial(Object.assign({
+        color: color,
+        map: TextureManager.figureTexture
+    }, extra));
+}
+
 // Функции для создания фигур (внутренние)
 function createSphere(color) {
-    const geometry = sphereGeometry;
-    const material = new THREE.MeshPhongMaterial({
-        color: color,
+    const material = buildFigureMaterial(color, {
         shininess: 800, // Увеличьте значение для более концентрированного блеска
         specular: 0xFFFFFF, // Более яркий цвет бликов (ближе к белому)
         emissive: 0x000011, // Можно добавить небольшое свечение
         emissiveIntensity: 0.1
     });
-    return new THREE.Mesh(geometry, material);
+    return new THREE.Mesh(sphereGeometry, material);
 }
 function createCube(color) {
-    const geometry = cubeFigureGeometry;
-    const material = new THREE.MeshPhongMaterial({
-        color: color,
+    const material = buildFigureMaterial(color, {
         shininess: 800, // Увеличьте значение для более концентрированного блеска
         specular: 0xFFFFFF, // Более яркий цвет бликов (ближе к белому)
         emissive: 0x000011, // Можно добавить небольшое свечение
         emissiveIntensity: 0.1
     });
-    return new THREE.Mesh(geometry, material);
+    return new THREE.Mesh(cubeFigureGeometry, material);
 }
 function createCone(color) {
-    const geometry = coneGeometry;
-    const material = new THREE.MeshPhongMaterial({
-        color: color,
+    const material = buildFigureMaterial(color, {
         shininess: 800, // Увеличьте значение для более концентрированного блеска
         specular: 0xFFFFFF, // Более яркий цвет бликов (ближе к белому)
         emissive: 0x000011, // Можно добавить небольшое свечение
         emissiveIntensity: 0.1
     });
-    return new THREE.Mesh(geometry, material);
+    return new THREE.Mesh(coneGeometry, material);
 }
 function createCylinder(color) {
-    const geometry = cylinderGeometry;
-    const material = new THREE.MeshPhongMaterial({
-        color: color,
-        shininess: 100,
-        specular: 0x111111
-    });
-    return new THREE.Mesh(geometry, material);
+    const material = buildFigureMaterial(color, { shininess: 100, specular: 0x111111 });
+    return new THREE.Mesh(cylinderGeometry, material);
 }
 function createTorus(color) {
-    const geometry = torusGeometry;
-    const material = new THREE.MeshPhongMaterial({
-        color: color,
+    const material = buildFigureMaterial(color, {
         shininess: 800, // Увеличьте значение для более концентрированного блеска
         specular: 0xFFFFFF, // Более яркий цвет бликов (ближе к белому)
         emissive: 0x000011, // Можно добавить небольшое свечение
         emissiveIntensity: 0.1
     });
-    return new THREE.Mesh(geometry, material);
+    return new THREE.Mesh(torusGeometry, material);
 }
 function createPyramid(color) {
-    const geometry = pyramidGeometry;
-    const material = new THREE.MeshPhongMaterial({
-        color: color,
-        shininess: 100,
-        specular: 0x111111
-    });
-    return new THREE.Mesh(geometry, material);
+    const material = buildFigureMaterial(color, { shininess: 100, specular: 0x111111 });
+    return new THREE.Mesh(pyramidGeometry, material);
 }
 function createStar(color) {
     const group = new THREE.Group();
 
     // Основной материал для звезды
-    const starMaterial = new THREE.MeshPhongMaterial({
-        color: color,
-        shininess: 100,
-        specular: 0x111111
-    });
+    const starMaterial = buildFigureMaterial(color, { shininess: 100, specular: 0x111111 });
 
     // Создаем два конуса для формирования звезды (общая геометрия — оба конуса
     // одинаковой формы, различается только поворот)
@@ -225,36 +249,54 @@ function createStar(color) {
     return group;
 }
 function createTorusKnot(color) {
-    const geometry = torusKnotGeometry;
-    const material = new THREE.MeshPhongMaterial({
-        color: color,
-        shininess: 100,
-        specular: 0x111111
-    });
-    return new THREE.Mesh(geometry, material);
+    const material = buildFigureMaterial(color, { shininess: 100, specular: 0x111111 });
+    return new THREE.Mesh(torusKnotGeometry, material);
 }
 function createTetrahedron(color) {
-    const geometry = tetrahedronGeometry;
-    const material = new THREE.MeshPhongMaterial({
-        color: color,
+    const material = buildFigureMaterial(color, {
         shininess: 800, // Увеличьте значение для более концентрированного блеска
         specular: 0xFFFFFF, // Более яркий цвет бликов (ближе к белому)
         emissive: 0x000011, // Можно добавить небольшое свечение
         emissiveIntensity: 0.8
     });
-    return new THREE.Mesh(geometry, material);
+    return new THREE.Mesh(tetrahedronGeometry, material);
 }
 function createOctahedron(color) {
-    const geometry = octahedronGeometry;
-    const material = new THREE.MeshPhongMaterial({
-        color: color,
+    const material = buildFigureMaterial(color, {
         shininess: 800, // Увеличьте значение для более концентрированного блеска
         specular: 0xFFFFFF, // Более яркий цвет бликов (ближе к белому)
         emissive: 0x000001, // Можно добавить небольшое свечение
         emissiveIntensity: 0.1
     });
-    return new THREE.Mesh(geometry, material);
+    return new THREE.Mesh(octahedronGeometry, material);
 }
+function createDodecahedron(color) {
+    const material = buildFigureMaterial(color, {
+        shininess: 800, // Увеличьте значение для более концентрированного блеска
+        specular: 0xFFFFFF, // Более яркий цвет бликов (ближе к белому)
+        emissive: 0x000011, // Можно добавить небольшое свечение
+        emissiveIntensity: 0.5
+    });
+    return new THREE.Mesh(dodecahedronGeometry, material);
+}
+
+// Наборы форм фигур — "Классический" это ровно то, что использовалось до
+// добавления смены форм (маппинг ниже, в createAndFillBoardOnPole, раньше
+// был захардкожен switch'ем). "Альтернативный" переиспользует ранее
+// определённые, но нигде не использовавшиеся геометрии (пирамида, звезда,
+// тетраэдр) — готовый второй набор форм без придумывания новой геометрии.
+const SHAPE_CREATORS = {
+    sphere: createSphere, cube: createCube, cone: createCone, cylinder: createCylinder,
+    torus: createTorus, pyramid: createPyramid, star: createStar, torusKnot: createTorusKnot,
+    tetrahedron: createTetrahedron, octahedron: createOctahedron, dodecahedron: createDodecahedron
+};
+const SHAPE_SETS = {
+    classic: { Pawn: 'cone', Rook: 'cube', Knight: 'torus', Bishop: 'sphere', Triort: 'octahedron', Queen: 'dodecahedron', King: 'torusKnot' },
+    alt: { Pawn: 'sphere', Rook: 'cube', Knight: 'star', Bishop: 'cone', Triort: 'torusKnot', Queen: 'pyramid', King: 'tetrahedron' }
+};
+// Подписи для выпадающего списка в настройках.
+const SHAPE_SET_LABELS = { classic: 'Классический', alt: 'Альтернативный' };
+
 // Функция для создания случайной фигуры (запасная)
 function createRandomFigure() {
     const random = Math.floor(Math.random() * 5);
@@ -268,18 +310,6 @@ function createRandomFigure() {
         case 4: return createTorus(color);
         default: return createSphere(color);
     }
-}
-
-function createDodecahedron(color) {
-    const geometry = dodecahedronGeometry;
-    const material = new THREE.MeshPhongMaterial({
-        color: color,
-        shininess: 800, // Увеличьте значение для более концентрированного блеска
-        specular: 0xFFFFFF, // Более яркий цвет бликов (ближе к белому)
-        emissive: 0x000011, // Можно добавить небольшое свечение
-        emissiveIntensity: 0.5
-    });
-    return new THREE.Mesh(geometry, material);
 }
 function createCellOfBoard(x, y, z, i, j, k) {
     const isEvenPosition = (i + j + k) % 2 === 0;
@@ -332,31 +362,9 @@ function createAndFillBoardOnPole(pole) {
                         ColorManager.colors.whiteFigureColor :
                         ColorManager.colors.blackFigureColor;
                     figure.Color === 'White' ? GraphicsEngine.isWhiteFigure = true : GraphicsEngine.isBlackFigure = true ;
-                    switch (figure.Name) {
-                        case 'Pawn':
-                            figureMesh = createCone(color);
-                            break;
-                        case 'Rook':
-                            figureMesh = createCube(color);
-                            break;
-                        case 'Knight':
-                            figureMesh = createTorus(color);
-                            break;
-                        case 'Bishop':
-                            figureMesh = createSphere(color);
-                            break;
-                        case 'Triort':
-                            figureMesh = createOctahedron(color);
-                            break;
-                        case 'Queen':
-                            figureMesh = createDodecahedron(color);
-                            break;
-                        case 'King':
-                            figureMesh = createTorusKnot(color);
-                            break;
-                        default:
-                            figureMesh = createRandomFigure();
-                    }
+                    const shapeName = (SHAPE_SETS[TextureManager.shapeSet] || SHAPE_SETS.classic)[figure.Name];
+                    const shapeCreator = SHAPE_CREATORS[shapeName];
+                    figureMesh = shapeCreator ? shapeCreator(color) : createRandomFigure();
 
                     cubeObjects[x][y][z].add(figureMesh);
                 }
@@ -566,5 +574,14 @@ window.GraphicsEngine = {
     onWindowResize,
     updateColors: ColorManager.updateColors.bind(ColorManager),
     getColors: () => ColorManager.colors,
-    hexToColor: ColorManager.hexToColor
+    hexToColor: ColorManager.hexToColor,
+    setFigureTexturePreset: (name) => TextureManager.setFigurePreset(name),
+    setFigureTextureCustom: (file) => TextureManager.setFigureCustom(file),
+    setBackgroundTexturePreset: (name) => TextureManager.setBackgroundPreset(name),
+    setBackgroundTextureCustom: (file) => TextureManager.setBackgroundCustom(file),
+    setShapeSet: (name) => TextureManager.setShapeSet(name),
+    getShapeSet: () => TextureManager.shapeSet,
+    figureTexturePresets: TextureLibrary.figurePresets,
+    backgroundTexturePresets: TextureLibrary.backgroundPresets,
+    shapeSets: SHAPE_SET_LABELS
 };
