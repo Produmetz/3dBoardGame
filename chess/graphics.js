@@ -114,7 +114,14 @@ const TextureManager = {
     backgroundTexture: null,
     backgroundTexturePresetName: null,
     shapeSet: 'default',
+    figureScale: 1,
 
+    setFigureScale(value) {
+        const n = parseFloat(value);
+        this.figureScale = Number.isFinite(n) ? Math.min(1.6, Math.max(0.5, n)) : 1;
+        createAndFillBoardOnPole(ChessEngine.Pole);
+        persistAppearance();
+    },
     setFigurePreset(name) {
         this.figureTexture = name ? TextureLibrary.get(name) : null;
         this.figureTexturePresetName = name || null;
@@ -166,6 +173,18 @@ const TextureManager = {
     }
 };
 
+// Скорость анимации хода — только шахматы (в Го фигуры не переезжают из
+// клетки в клетку, там просто ставится камень, анимировать нечего).
+// 0 = мгновенно, как было раньше до этой настройки.
+const MovementSettings = {
+    speedMs: 0,
+    setSpeed(ms) {
+        const n = parseInt(ms, 10);
+        this.speedMs = Number.isFinite(n) && n > 0 ? n : 0;
+        persistAppearance();
+    }
+};
+
 // Сохраняет текущее отображение в AppearanceStore ('chess' — отдельно от Го,
 // см. appearance.js) при любом изменении цвета/текстуры/формы, на любой из
 // четырёх шахматных страниц. Своя загруженная картинка не сохраняется —
@@ -175,7 +194,9 @@ function persistAppearance() {
         colors: ColorManager.colors,
         bgTexture: TextureManager.backgroundTexturePresetName,
         figureTexture: TextureManager.figureTexturePresetName,
-        shapeSet: TextureManager.shapeSet
+        shapeSet: TextureManager.shapeSet,
+        figureScale: TextureManager.figureScale,
+        moveSpeedMs: MovementSettings.speedMs
     });
 }
 
@@ -505,6 +526,12 @@ const CustomShapeManager = {
         TextureManager.figureTexture = TextureLibrary.get(stored.figureTexture);
         TextureManager.figureTexturePresetName = stored.figureTexture;
     }
+    if (stored.figureScale) {
+        TextureManager.figureScale = stored.figureScale;
+    }
+    if (stored.moveSpeedMs !== undefined) {
+        MovementSettings.speedMs = stored.moveSpeedMs;
+    }
     if (stored.shapeSet) {
         TextureManager.shapeSet = stored.shapeSet;
         // Восстановленный набор "Классический" ещё без моделей (они не
@@ -614,11 +641,64 @@ function createAndFillBoardOnPole(pole) {
                         figureMesh = shapeCreator ? shapeCreator(color) : createRandomFigure();
                     }
 
+                    figureMesh.scale.multiplyScalar(TextureManager.figureScale);
                     cubeObjects[x][y][z].add(figureMesh);
                 }
             }
         }
     }
+}
+
+// Анимирует фигуру(ы), едущую(ие) из одной клетки в другую (обычный ход —
+// один элемент в moves; рокировка — король и ладья, два), затем перестраивает
+// доску целиком, как и раньше — animateMoveThenRebuild лишь показывает
+// промежуточное движение ПЕРЕД финальной перестройкой, а не заменяет её:
+// перестройка всё равно нужна, чтобы отразить взятие/превращение/и т.д.
+// Если анимация выключена (MovementSettings.speedMs === 0, как было всегда
+// до этой настройки) — просто перестраивает немедленно, без изменений в
+// поведении.
+function animateMoveThenRebuild(pole, moves, onComplete) {
+    const duration = MovementSettings.speedMs;
+    if (!duration) {
+        createAndFillBoardOnPole(pole);
+        if (onComplete) onComplete();
+        return;
+    }
+
+    const animations = [];
+    for (const { from, to } of moves) {
+        const fromCell = cubeObjects[from.x] && cubeObjects[from.x][from.y] && cubeObjects[from.x][from.y][from.z];
+        const toCell = cubeObjects[to.x] && cubeObjects[to.x][to.y] && cubeObjects[to.x][to.y][to.z];
+        const movingMesh = fromCell && fromCell.children[0];
+        if (!fromCell || !toCell || !movingMesh) continue;
+        fromCell.remove(movingMesh);
+        movingMesh.position.copy(fromCell.position);
+        scene.add(movingMesh);
+        animations.push({ mesh: movingMesh, start: fromCell.position.clone(), end: toCell.position.clone() });
+    }
+
+    if (!animations.length) {
+        // Ничего не нашли по указанным координатам (например, доска уже была
+        // перестроена чем-то другим) — просто перестраиваем как обычно.
+        createAndFillBoardOnPole(pole);
+        if (onComplete) onComplete();
+        return;
+    }
+
+    const startTime = performance.now();
+    function step(now) {
+        const t = Math.min(1, (now - startTime) / duration);
+        const eased = 1 - (1 - t) * (1 - t); // ease-out — чуть приятнее линейного, без лишней библиотеки
+        for (const a of animations) a.mesh.position.lerpVectors(a.start, a.end, eased);
+        if (t < 1) {
+            requestAnimationFrame(step);
+        } else {
+            for (const a of animations) scene.remove(a.mesh);
+            createAndFillBoardOnPole(pole);
+            if (onComplete) onComplete();
+        }
+    }
+    requestAnimationFrame(step);
 }
 
 function selectCell(i, j, k) {
@@ -827,6 +907,7 @@ window.GraphicsEngine = {
         return expandedAxis;
     },
     createAndFillBoardOnPole,
+    animateMoveThenRebuild,
     changeCellColor,
     changeCellOpacity,
     cellFromClick,
@@ -852,6 +933,10 @@ window.GraphicsEngine = {
     figureTexturePresets: TextureLibrary.figurePresets,
     backgroundTexturePresets: TextureLibrary.backgroundPresets,
     shapeSets: SHAPE_SET_LABELS,
+    setFigureScale: (value) => TextureManager.setFigureScale(value),
+    getFigureScale: () => TextureManager.figureScale,
+    setMoveSpeed: (ms) => MovementSettings.setSpeed(ms),
+    getMoveSpeed: () => MovementSettings.speedMs,
     // Приводит элементы формы настроек (если они есть на текущей странице —
     // не на всех четырёх есть текстуры/форма) в соответствие с тем, что
     // сейчас реально применено (включая восстановленное из AppearanceStore
@@ -869,5 +954,7 @@ window.GraphicsEngine = {
         setVal('bg-texture', TextureManager.backgroundTexturePresetName || '');
         setVal('figure-texture', TextureManager.figureTexturePresetName || '');
         setVal('shape-set', TextureManager.shapeSet);
+        setVal('figure-scale', TextureManager.figureScale);
+        setVal('move-speed', MovementSettings.speedMs);
     }
 };

@@ -81,7 +81,14 @@ const TextureManager = {
     figureTexturePresetName: null,
     backgroundTexture: null,
     backgroundTexturePresetName: null,
+    figureScale: 1,
 
+    setFigureScale(value) {
+        const n = parseFloat(value);
+        this.figureScale = Number.isFinite(n) ? Math.min(1.6, Math.max(0.5, n)) : 1;
+        if (window.goGame && window.goGame.board) createAndFillBoardForGo(window.goGame.board);
+        persistAppearance();
+    },
     setFigurePreset(name) {
         this.figureTexture = name ? TextureLibrary.get(name) : null;
         this.figureTexturePresetName = name || null;
@@ -112,7 +119,8 @@ function persistAppearance() {
     AppearanceStore.save('go', {
         colors: ColorManager.colors,
         bgTexture: TextureManager.backgroundTexturePresetName,
-        figureTexture: TextureManager.figureTexturePresetName
+        figureTexture: TextureManager.figureTexturePresetName,
+        figureScale: TextureManager.figureScale
     });
 }
 
@@ -132,6 +140,9 @@ function persistAppearance() {
     if (stored.figureTexture) {
         TextureManager.figureTexture = TextureLibrary.get(stored.figureTexture);
         TextureManager.figureTexturePresetName = stored.figureTexture;
+    }
+    if (stored.figureScale) {
+        TextureManager.figureScale = stored.figureScale;
     }
 
     scene.background = TextureManager.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
@@ -240,11 +251,11 @@ function createAndFillBoardForGo(board, deadStoneKeys) {
                     const sphere = createSphere(color);
                     const isDead = deadStoneKeys && deadStoneKeys.has(`${x},${y},${z}`);
                     if (isDead) {
-                        sphere.scale.set(0.5, 0.5, 0.5);
+                        sphere.scale.setScalar(0.5 * TextureManager.figureScale);
                         sphere.material.transparent = true;
                         sphere.material.opacity = 0.35;
                     } else {
-                        sphere.scale.set(0.7, 0.7, 0.7);
+                        sphere.scale.setScalar(0.7 * TextureManager.figureScale);
                     }
                     cell.add(sphere);
                 }
@@ -369,6 +380,8 @@ window.GraphicsEngine = {
     setBackgroundTextureCustom: (file) => TextureManager.setBackgroundCustom(file),
     figureTexturePresets: TextureLibrary.figurePresets,
     backgroundTexturePresets: TextureLibrary.backgroundPresets,
+    setFigureScale: (value) => TextureManager.setFigureScale(value),
+    getFigureScale: () => TextureManager.figureScale,
     // См. комментарий у одноимённого метода в chess/graphics.js.
     syncAppearanceUI: function () {
         const hex = (n) => '#' + n.toString(16).padStart(6, '0');
@@ -381,6 +394,7 @@ window.GraphicsEngine = {
         setVal('black-figures-color', hex(c.blackFigureColor));
         setVal('bg-texture', TextureManager.backgroundTexturePresetName || '');
         setVal('figure-texture', TextureManager.figureTexturePresetName || '');
+        setVal('figure-scale', TextureManager.figureScale);
     }
 };
 

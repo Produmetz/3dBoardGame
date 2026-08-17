@@ -149,8 +149,16 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.files[0]) GraphicsEngine.setFigureTextureCustom(e.target.files[0]);
     });
 
+    const figureScaleInput = document.getElementById('figure-scale');
+    const figureScaleValue = document.getElementById('figure-scale-value');
+    figureScaleInput?.addEventListener('input', (e) => {
+        if (figureScaleValue) figureScaleValue.textContent = parseFloat(e.target.value).toFixed(2);
+        GraphicsEngine.setFigureScale(e.target.value);
+    });
+
     // См. комментарий у аналогичного вызова в chess/event-handlers.js.
     GraphicsEngine.syncAppearanceUI();
+    if (figureScaleValue && figureScaleInput) figureScaleValue.textContent = parseFloat(figureScaleInput.value).toFixed(2);
 
     document.getElementById('chat-input')?.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {

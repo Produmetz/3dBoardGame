@@ -411,21 +411,29 @@ class Game {
                     promotion: moveResult.promotion ? moveResult.promotion.figureType : undefined
                 });
             }
-            // Обновляем графическое представление
-            GraphicsEngine.createAndFillBoardOnPole(ChessEngine.Pole);
+            // Обновляем графическое представление — если включена анимация
+            // хода (см. настройки), фигура(ы) проедут визуально из from в to
+            // перед тем, как доска перестроится целиком; при выключенной
+            // анимации (по умолчанию, как было всегда) ведёт себя как раньше -
+            // мгновенная перестройка. Рокировка едет вдвоём (король + ладья).
             GraphicsEngine.unHighlightingPossibleMoves();
+            const animatedMoves = [{ from: { x: fromX, y: fromY, z: fromZ }, to: { x: toX, y: toY, z: toZ } }];
+            if (moveResult.castling) {
+                animatedMoves.push({ from: moveResult.castling.rookFrom, to: moveResult.castling.rookTo });
+            }
 
             // Меняем текущего игрока
             this.currentPlayer = moveResult.nextMove;
 
-            // Проверяем состояние игры
-            this.checkGameState();
-
-            // Обновляем UI
-            this.updateUI();
-
-            console.log(`Ход выполнен. Теперь ходят: ${this.currentPlayer}`);
-            this.maybeBotMove();
+            // Состояние игры/UI/ход бота откладываем до конца анимации (или
+            // выполняются сразу же, если она выключена) — иначе, например,
+            // бот сходил бы поверх ещё не доехавшей фигуры игрока.
+            GraphicsEngine.animateMoveThenRebuild(ChessEngine.Pole, animatedMoves, () => {
+                this.checkGameState();
+                this.updateUI();
+                console.log(`Ход выполнен. Теперь ходят: ${this.currentPlayer}`);
+                this.maybeBotMove();
+            });
         } else {
             console.log('Недопустимый ход:', moveResult.message);
         }
