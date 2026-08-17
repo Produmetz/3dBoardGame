@@ -1,151 +1,83 @@
 /* === Navigation shared styles === */
 
-/* Breadcrumb bar */
-.nav-breadcrumb {
+/* Persistent top bar — same on every page, including during play */
+.nav-topbar {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: 60;
+    height: 44px;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1.5rem;
+    gap: 1.5rem;
+    padding: 0 1.5rem;
     background: rgba(10, 15, 26, 0.92);
     backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--color-border);
-    font-size: 0.85rem;
     font-family: var(--font-family);
 }
 
-.nav-breadcrumb a {
-    color: var(--color-text-secondary);
+.nav-logo {
+    color: var(--color-heading);
+    font-weight: 600;
+    font-size: 0.95rem;
     text-decoration: none;
+    white-space: nowrap;
     transition: color 0.2s;
 }
 
-.nav-breadcrumb a:hover {
+.nav-logo:hover {
     color: var(--color-accent);
 }
 
-.nav-breadcrumb .nav-sep {
-    color: #4a5a6a;
-    user-select: none;
+.nav-links {
+    display: flex;
+    gap: 1.2rem;
 }
 
-.nav-breadcrumb .nav-current {
-    color: var(--color-text);
-    font-weight: 500;
-}
-
-/* Back button */
-.nav-back-btn {
-    position: fixed;
-    top: 40px;
-    left: 20px;
-    z-index: 55;
-    background: var(--color-surface-raised);
-    border: 1px solid var(--color-border);
+.nav-link {
     color: var(--color-text-secondary);
-    padding: 0.4rem 0.9rem;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-family: var(--font-family);
     text-decoration: none;
-    transition: 0.2s;
+    font-size: 0.9rem;
+    padding: 0.2rem 0;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
 }
 
-body:not(.nav-has-breadcrumb) .nav-back-btn {
-    display: none;
+.nav-link:hover {
+    color: var(--color-text);
 }
 
-.nav-back-btn:hover {
-    background: var(--color-secondary-btn);
-    color: white;
-}
-
-/* Mode indicator badge */
-.nav-mode-badge {
-    position: fixed;
-    top: 44px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 55;
-    padding: 0.25rem 1rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    font-family: var(--font-family);
-    display: none;
-    pointer-events: none;
-}
-
-.nav-mode-badge.mode-local {
-    display: block;
-    background: var(--color-surface-raised);
-    color: var(--color-text-secondary);
-    border: 1px solid var(--color-border);
-}
-
-.nav-mode-badge.mode-online {
-    display: block;
-    background: rgba(76, 201, 240, 0.15);
+.nav-link.active {
     color: var(--color-accent);
-    border: 1px solid rgba(76, 201, 240, 0.3);
-    animation: nav-pulse 3s ease-in-out infinite;
+    border-bottom-color: var(--color-accent);
 }
 
-.nav-mode-badge.mode-spectator {
-    display: block;
-    background: rgba(255, 152, 0, 0.15);
-    color: #ffb74d;
-    border: 1px solid rgba(255, 152, 0, 0.3);
+/* Push page content below the fixed bar. Game pages skip this: their
+   canvas is sized to the full window and must start at the very top —
+   the bar just overlays the top strip of it instead (same treatment their
+   fixed panels/toolbars already get, offset below). */
+body.nav-has-topbar {
+    padding-top: 44px;
 }
 
-@keyframes nav-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-/* Adjust game pages for nav bar */
-body.nav-has-breadcrumb {
-    padding-top: 36px;
-}
-
-/* For non-game pages (index, servers, lobby) — just add top padding */
-body.nav-has-breadcrumb:not(.nav-game-page) {
+body.nav-has-topbar.nav-game-page {
     padding-top: 0;
 }
 
-/* Game page specific adjustments */
-body.nav-game-page {
-    padding-top: 0;
-}
-
-body.nav-game-page .nav-mode-badge {
-    top: 44px;
-}
-
-/* Mobile adjustments */
 @media (max-width: 768px) {
-    .nav-breadcrumb {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.8rem;
+    .nav-topbar {
+        padding: 0 1rem;
+        gap: 1rem;
     }
 
-    .nav-back-btn {
-        top: 36px;
-        left: 10px;
-        padding: 0.3rem 0.7rem;
-        font-size: 0.8rem;
+    .nav-links {
+        gap: 0.8rem;
     }
 
-    .nav-mode-badge {
-        top: 38px;
-        font-size: 0.7rem;
-        padding: 0.2rem 0.8rem;
+    .nav-link {
+        font-size: 0.85rem;
     }
 }

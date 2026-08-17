@@ -68,12 +68,14 @@ canvas {
     transform: scale(1.05);
 }
 
+/* Отступ сверху = высота фиксированного nav-topbar (44px, см. nav.css) +
+   зазор, чтобы панели не оказывались под ним. */
 /* Стили для левой панели */
 #left-panel {
     position: absolute;
-    top: 20px;
+    top: 56px;
     left: 20px;
-    max-height: calc(100vh - 40px);
+    max-height: calc(100vh - 76px);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -85,10 +87,10 @@ canvas {
 /* Стили для правой панели */
 #right-panel {
     position: absolute;
-    top: 20px;
+    top: 56px;
     right: 20px;
     width: 320px;
-    max-height: calc(100vh - 40px);
+    max-height: calc(100vh - 76px);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -102,10 +104,10 @@ canvas {
    figures-tutorial.html, которые в этот редизайн не входят. */
 #game-panel {
     position: absolute;
-    top: 20px;
+    top: 56px;
     right: 20px;
     width: 320px;
-    max-height: calc(100vh - 40px);
+    max-height: calc(100vh - 76px);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
