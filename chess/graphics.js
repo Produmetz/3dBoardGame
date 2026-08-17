@@ -20,16 +20,26 @@ controls.target.set(0, 0, 0); // Центрируем цель управлен�
 controls.enableDamping = false;
 
 // Освещение
-const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+const BASE_LIGHT_INTENSITY = { ambient: 0.8, dir1: 0.6, dir2: 0.4 };
+
+const ambientLight = new THREE.AmbientLight(0x404040, BASE_LIGHT_INTENSITY.ambient);
 scene.add(ambientLight);
 
-const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.6);
+const directionalLight1 = new THREE.DirectionalLight(0xffffff, BASE_LIGHT_INTENSITY.dir1);
 directionalLight1.position.set(10, 15, 10);
 scene.add(directionalLight1);
 
-const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+const directionalLight2 = new THREE.DirectionalLight(0xffffff, BASE_LIGHT_INTENSITY.dir2);
 directionalLight2.position.set(-10, -10, -10);
 scene.add(directionalLight2);
+
+// Множитель поверх базовых интенсивностей всех трёх источников разом — см.
+// MaterialSettings.setLightIntensity.
+function applyLightIntensity() {
+    ambientLight.intensity = BASE_LIGHT_INTENSITY.ambient * MaterialSettings.lightIntensity;
+    directionalLight1.intensity = BASE_LIGHT_INTENSITY.dir1 * MaterialSettings.lightIntensity;
+    directionalLight2.intensity = BASE_LIGHT_INTENSITY.dir2 * MaterialSettings.lightIntensity;
+}
 
 controls.enablePan = true;
 controls.enableZoom = true;
@@ -185,6 +195,46 @@ const MovementSettings = {
     }
 };
 
+// Прозрачность/блеск клеток поля, блеск фигур и общая яркость освещения —
+// всё, что не цвет (см. ColorManager) и не текстура/форма (см. TextureManager),
+// но всё ещё часть "отображения". cellOpacity/cellShininess красят уже
+// существующие материалы клеток напрямую (applyCellMaterialSettings), не
+// требуя пересоздания доски; figureGloss меняет множитель внутри
+// buildFigureMaterial, поэтому требует полной пересборки (там материалы
+// создаются заново на каждую фигуру); lightIntensity красит сами источники
+// света напрямую (applyLightIntensity).
+const MaterialSettings = {
+    cellOpacity: 0.3,
+    cellShininess: 80,
+    figureGloss: 1,
+    lightIntensity: 1,
+
+    setCellOpacity(value) {
+        const n = parseFloat(value);
+        this.cellOpacity = Number.isFinite(n) ? Math.min(1, Math.max(0.05, n)) : 0.3;
+        applyCellMaterialSettings();
+        persistAppearance();
+    },
+    setCellShininess(value) {
+        const n = parseFloat(value);
+        this.cellShininess = Number.isFinite(n) ? Math.min(200, Math.max(0, n)) : 80;
+        applyCellMaterialSettings();
+        persistAppearance();
+    },
+    setFigureGloss(value) {
+        const n = parseFloat(value);
+        this.figureGloss = Number.isFinite(n) ? Math.min(2, Math.max(0.1, n)) : 1;
+        createAndFillBoardOnPole(ChessEngine.Pole);
+        persistAppearance();
+    },
+    setLightIntensity(value) {
+        const n = parseFloat(value);
+        this.lightIntensity = Number.isFinite(n) ? Math.min(2, Math.max(0.2, n)) : 1;
+        applyLightIntensity();
+        persistAppearance();
+    }
+};
+
 // Сохраняет текущее отображение в AppearanceStore ('chess' — отдельно от Го,
 // см. appearance.js) при любом изменении цвета/текстуры/формы, на любой из
 // четырёх шахматных страниц. Своя загруженная картинка не сохраняется —
@@ -196,7 +246,11 @@ function persistAppearance() {
         figureTexture: TextureManager.figureTexturePresetName,
         shapeSet: TextureManager.shapeSet,
         figureScale: TextureManager.figureScale,
-        moveSpeedMs: MovementSettings.speedMs
+        moveSpeedMs: MovementSettings.speedMs,
+        cellOpacity: MaterialSettings.cellOpacity,
+        cellShininess: MaterialSettings.cellShininess,
+        figureGloss: MaterialSettings.figureGloss,
+        lightIntensity: MaterialSettings.lightIntensity
     });
 }
 
@@ -256,6 +310,9 @@ function disposeCellContents(cell) {
 // себя как раньше, чистый цвет). Текстура тонируется color'ом фигуры, см.
 // комментарий в TextureManager.
 function buildFigureMaterial(color, extra) {
+    if (extra && typeof extra.shininess === 'number') {
+        extra = Object.assign({}, extra, { shininess: extra.shininess * MaterialSettings.figureGloss });
+    }
     return new THREE.MeshPhongMaterial(Object.assign({
         color: color,
         map: TextureManager.figureTexture
@@ -532,6 +589,19 @@ const CustomShapeManager = {
     if (stored.moveSpeedMs !== undefined) {
         MovementSettings.speedMs = stored.moveSpeedMs;
     }
+    if (stored.cellOpacity !== undefined) {
+        MaterialSettings.cellOpacity = stored.cellOpacity;
+    }
+    if (stored.cellShininess !== undefined) {
+        MaterialSettings.cellShininess = stored.cellShininess;
+    }
+    if (stored.figureGloss !== undefined) {
+        MaterialSettings.figureGloss = stored.figureGloss;
+    }
+    if (stored.lightIntensity !== undefined) {
+        MaterialSettings.lightIntensity = stored.lightIntensity;
+        applyLightIntensity();
+    }
     if (stored.shapeSet) {
         TextureManager.shapeSet = stored.shapeSet;
         // Восстановленный набор "Классический" ещё без моделей (они не
@@ -583,8 +653,8 @@ function createCellOfBoard(x, y, z, i, j, k) {
     const cubeMaterial = new THREE.MeshPhongMaterial({
         color: cubeBaseColor,
         transparent: true,
-        opacity: 0.3,
-        shininess: 80,
+        opacity: MaterialSettings.cellOpacity,
+        shininess: MaterialSettings.cellShininess,
         specular: 0x111111
     });
 
@@ -722,7 +792,7 @@ function unselectCell() {
             ColorManager.colors.boardColor1 :
             ColorManager.colors.boardColor2;
         changeCellColor(i, j, k, cubeBaseColor);
-        changeCellOpacity(i, j, k, 0.3);
+        changeCellOpacity(i, j, k, MaterialSettings.cellOpacity);
 
         // Сбрасываем состояние
         GraphicsEngine.highlightedCell = null;
@@ -734,6 +804,24 @@ function changeCellColor(x, y, z, color) {
 }
 function changeCellOpacity(x, y, z, value) {
     cubeObjects[x][y][z].material.opacity = value;
+}
+
+// Красит уже существующие материалы всех клеток в текущие MaterialSettings
+// (прозрачность/блеск) — в отличие от смены текстуры/формы фигур, доску
+// пересобирать не нужно, у клеток нет геометрии, которая бы зависела от этих
+// настроек.
+function applyCellMaterialSettings() {
+    for (let x = 0; x < gridSizeX; x++) {
+        for (let y = 0; y < gridSizeY; y++) {
+            for (let z = 0; z < gridSizeZ; z++) {
+                const cell = cubeObjects[x][y][z];
+                if (cell) {
+                    cell.material.opacity = MaterialSettings.cellOpacity;
+                    cell.material.shininess = MaterialSettings.cellShininess;
+                }
+            }
+        }
+    }
 }
 
 // Красит материал фигуры в клетке. Большинство фигур — один Mesh
@@ -792,7 +880,7 @@ function unHighlightingPossibleMoves() {
             ColorManager.colors.boardColor1 :
             ColorManager.colors.boardColor2;
         changeCellColor(x, y, z, cubeBaseColor);
-        changeCellOpacity(x, y, z, 0.3);
+        changeCellOpacity(x, y, z, MaterialSettings.cellOpacity);
     });
     GraphicsEngine.highlightedPossibleMoves = [];
 }
@@ -937,6 +1025,14 @@ window.GraphicsEngine = {
     getFigureScale: () => TextureManager.figureScale,
     setMoveSpeed: (ms) => MovementSettings.setSpeed(ms),
     getMoveSpeed: () => MovementSettings.speedMs,
+    setCellOpacity: (value) => MaterialSettings.setCellOpacity(value),
+    getCellOpacity: () => MaterialSettings.cellOpacity,
+    setCellShininess: (value) => MaterialSettings.setCellShininess(value),
+    getCellShininess: () => MaterialSettings.cellShininess,
+    setFigureGloss: (value) => MaterialSettings.setFigureGloss(value),
+    getFigureGloss: () => MaterialSettings.figureGloss,
+    setLightIntensity: (value) => MaterialSettings.setLightIntensity(value),
+    getLightIntensity: () => MaterialSettings.lightIntensity,
     // Приводит элементы формы настроек (если они есть на текущей странице —
     // не на всех четырёх есть текстуры/форма) в соответствие с тем, что
     // сейчас реально применено (включая восстановленное из AppearanceStore
@@ -956,5 +1052,9 @@ window.GraphicsEngine = {
         setVal('shape-set', TextureManager.shapeSet);
         setVal('figure-scale', TextureManager.figureScale);
         setVal('move-speed', MovementSettings.speedMs);
+        setVal('cell-opacity', MaterialSettings.cellOpacity);
+        setVal('cell-shininess', MaterialSettings.cellShininess);
+        setVal('figure-gloss', MaterialSettings.figureGloss);
+        setVal('light-intensity', MaterialSettings.lightIntensity);
     }
 };

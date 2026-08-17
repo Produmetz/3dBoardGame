@@ -19,16 +19,24 @@ const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0, 0);
 controls.enableDamping = false;
 
-const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+const BASE_LIGHT_INTENSITY = { ambient: 0.8, dir1: 0.6, dir2: 0.4 };
+
+const ambientLight = new THREE.AmbientLight(0x404040, BASE_LIGHT_INTENSITY.ambient);
 scene.add(ambientLight);
 
-const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.6);
+const directionalLight1 = new THREE.DirectionalLight(0xffffff, BASE_LIGHT_INTENSITY.dir1);
 directionalLight1.position.set(10, 15, 10);
 scene.add(directionalLight1);
 
-const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+const directionalLight2 = new THREE.DirectionalLight(0xffffff, BASE_LIGHT_INTENSITY.dir2);
 directionalLight2.position.set(-10, -10, -10);
 scene.add(directionalLight2);
+
+function applyLightIntensity() {
+    ambientLight.intensity = BASE_LIGHT_INTENSITY.ambient * MaterialSettings.lightIntensity;
+    directionalLight1.intensity = BASE_LIGHT_INTENSITY.dir1 * MaterialSettings.lightIntensity;
+    directionalLight2.intensity = BASE_LIGHT_INTENSITY.dir2 * MaterialSettings.lightIntensity;
+}
 
 controls.enablePan = true;
 controls.enableZoom = true;
@@ -113,6 +121,40 @@ const TextureManager = {
     }
 };
 
+// См. подробный комментарий у MaterialSettings в chess/graphics.js — логика
+// идентична.
+const MaterialSettings = {
+    cellOpacity: 0.3,
+    cellShininess: 80,
+    figureGloss: 1,
+    lightIntensity: 1,
+
+    setCellOpacity(value) {
+        const n = parseFloat(value);
+        this.cellOpacity = Number.isFinite(n) ? Math.min(1, Math.max(0.05, n)) : 0.3;
+        applyCellMaterialSettings();
+        persistAppearance();
+    },
+    setCellShininess(value) {
+        const n = parseFloat(value);
+        this.cellShininess = Number.isFinite(n) ? Math.min(200, Math.max(0, n)) : 80;
+        applyCellMaterialSettings();
+        persistAppearance();
+    },
+    setFigureGloss(value) {
+        const n = parseFloat(value);
+        this.figureGloss = Number.isFinite(n) ? Math.min(2, Math.max(0.1, n)) : 1;
+        if (window.goGame && window.goGame.board) createAndFillBoardForGo(window.goGame.board);
+        persistAppearance();
+    },
+    setLightIntensity(value) {
+        const n = parseFloat(value);
+        this.lightIntensity = Number.isFinite(n) ? Math.min(2, Math.max(0.2, n)) : 1;
+        applyLightIntensity();
+        persistAppearance();
+    }
+};
+
 // См. подробный комментарий у persistAppearance/restoreStoredAppearance в
 // chess/graphics.js — логика идентична, ключ 'go' отдельный от 'chess'.
 function persistAppearance() {
@@ -120,7 +162,11 @@ function persistAppearance() {
         colors: ColorManager.colors,
         bgTexture: TextureManager.backgroundTexturePresetName,
         figureTexture: TextureManager.figureTexturePresetName,
-        figureScale: TextureManager.figureScale
+        figureScale: TextureManager.figureScale,
+        cellOpacity: MaterialSettings.cellOpacity,
+        cellShininess: MaterialSettings.cellShininess,
+        figureGloss: MaterialSettings.figureGloss,
+        lightIntensity: MaterialSettings.lightIntensity
     });
 }
 
@@ -144,6 +190,19 @@ function persistAppearance() {
     if (stored.figureScale) {
         TextureManager.figureScale = stored.figureScale;
     }
+    if (stored.cellOpacity !== undefined) {
+        MaterialSettings.cellOpacity = stored.cellOpacity;
+    }
+    if (stored.cellShininess !== undefined) {
+        MaterialSettings.cellShininess = stored.cellShininess;
+    }
+    if (stored.figureGloss !== undefined) {
+        MaterialSettings.figureGloss = stored.figureGloss;
+    }
+    if (stored.lightIntensity !== undefined) {
+        MaterialSettings.lightIntensity = stored.lightIntensity;
+        applyLightIntensity();
+    }
 
     scene.background = TextureManager.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
 })();
@@ -163,7 +222,7 @@ function createSphere(color) {
     const material = new THREE.MeshPhongMaterial({
         color: color,
         map: TextureManager.figureTexture,
-        shininess: 800,
+        shininess: 800 * MaterialSettings.figureGloss,
         specular: 0xFFFFFF,
         emissive: 0x000011,
         emissiveIntensity: 0.1
@@ -178,8 +237,8 @@ function createCellOfBoard(x, y, z, i, j, k) {
     const cubeMaterial = new THREE.MeshPhongMaterial({
         color: cubeBaseColor,
         transparent: true,
-        opacity: 0.3,
-        shininess: 80,
+        opacity: MaterialSettings.cellOpacity,
+        shininess: MaterialSettings.cellShininess,
         specular: 0x111111
     });
 
@@ -276,6 +335,21 @@ function changeCellOpacity(x, y, z, value) {
     }
 }
 
+// См. подробный комментарий у applyCellMaterialSettings в chess/graphics.js.
+function applyCellMaterialSettings() {
+    for (let x = 0; x < cubeObjects.length; x++) {
+        for (let y = 0; y < cubeObjects[x]?.length; y++) {
+            for (let z = 0; z < cubeObjects[x][y]?.length; z++) {
+                const cell = cubeObjects[x][y][z];
+                if (cell) {
+                    cell.material.opacity = MaterialSettings.cellOpacity;
+                    cell.material.shininess = MaterialSettings.cellShininess;
+                }
+            }
+        }
+    }
+}
+
 function cellFromClick(click_x, click_y) {
     const rect = canvas.getBoundingClientRect();
     mouse.x = ((click_x - rect.left) / rect.width) * 2 - 1;
@@ -302,7 +376,7 @@ function unselectCell() {
         const isEvenPosition = (i + j + k) % 2 === 0;
         const cubeBaseColor = isEvenPosition ? ColorManager.colors.boardColor1 : ColorManager.colors.boardColor2;
         changeCellColor(i, j, k, cubeBaseColor);
-        changeCellOpacity(i, j, k, 0.3);
+        changeCellOpacity(i, j, k, MaterialSettings.cellOpacity);
         highlightedCell = null;
     }
 }
@@ -382,6 +456,14 @@ window.GraphicsEngine = {
     backgroundTexturePresets: TextureLibrary.backgroundPresets,
     setFigureScale: (value) => TextureManager.setFigureScale(value),
     getFigureScale: () => TextureManager.figureScale,
+    setCellOpacity: (value) => MaterialSettings.setCellOpacity(value),
+    getCellOpacity: () => MaterialSettings.cellOpacity,
+    setCellShininess: (value) => MaterialSettings.setCellShininess(value),
+    getCellShininess: () => MaterialSettings.cellShininess,
+    setFigureGloss: (value) => MaterialSettings.setFigureGloss(value),
+    getFigureGloss: () => MaterialSettings.figureGloss,
+    setLightIntensity: (value) => MaterialSettings.setLightIntensity(value),
+    getLightIntensity: () => MaterialSettings.lightIntensity,
     // См. комментарий у одноимённого метода в chess/graphics.js.
     syncAppearanceUI: function () {
         const hex = (n) => '#' + n.toString(16).padStart(6, '0');
@@ -395,6 +477,10 @@ window.GraphicsEngine = {
         setVal('bg-texture', TextureManager.backgroundTexturePresetName || '');
         setVal('figure-texture', TextureManager.figureTexturePresetName || '');
         setVal('figure-scale', TextureManager.figureScale);
+        setVal('cell-opacity', MaterialSettings.cellOpacity);
+        setVal('cell-shininess', MaterialSettings.cellShininess);
+        setVal('figure-gloss', MaterialSettings.figureGloss);
+        setVal('light-intensity', MaterialSettings.lightIntensity);
     }
 };
 

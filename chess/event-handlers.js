@@ -192,12 +192,35 @@ document.addEventListener('DOMContentLoaded', function () {
         GraphicsEngine.setMoveSpeed(e.target.value);
     });
 
+    // Прозрачность/блеск клеток, блеск фигур, яркость освещения — см.
+    // MaterialSettings в graphics.js. label-span у каждого ползунка показывает
+    // текущее число (у блеска клеток — целое, у остальных — 2 знака).
+    const materialSliders = [
+        ['cell-opacity', 'setCellOpacity', 2],
+        ['cell-shininess', 'setCellShininess', 0],
+        ['figure-gloss', 'setFigureGloss', 2],
+        ['light-intensity', 'setLightIntensity', 2]
+    ];
+    materialSliders.forEach(([id, setter, decimals]) => {
+        const input = document.getElementById(id);
+        const label = document.getElementById(id + '-value');
+        input?.addEventListener('input', (e) => {
+            if (label) label.textContent = parseFloat(e.target.value).toFixed(decimals);
+            GraphicsEngine[setter](e.target.value);
+        });
+    });
+
     // Приводит цвет/текстура/форма-контролы к уже восстановленному из
     // AppearanceStore состоянию (см. graphics.js) — иначе селекты показывали
     // бы дефолт "Нет (цвет)"/"По умолчанию", даже когда реально применено
     // что-то другое.
     GraphicsEngine.syncAppearanceUI();
     if (figureScaleValue && figureScaleInput) figureScaleValue.textContent = parseFloat(figureScaleInput.value).toFixed(2);
+    materialSliders.forEach(([id, , decimals]) => {
+        const input = document.getElementById(id);
+        const label = document.getElementById(id + '-value');
+        if (input && label) label.textContent = parseFloat(input.value).toFixed(decimals);
+    });
 
     // Обработчик для чата (Enter)
     document.getElementById('chat-input')?.addEventListener('keypress', function (e) {

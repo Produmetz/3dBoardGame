@@ -156,9 +156,30 @@ document.addEventListener('DOMContentLoaded', function () {
         GraphicsEngine.setFigureScale(e.target.value);
     });
 
+    // См. комментарий у аналогичных ползунков в chess/event-handlers.js.
+    const materialSliders = [
+        ['cell-opacity', 'setCellOpacity', 2],
+        ['cell-shininess', 'setCellShininess', 0],
+        ['figure-gloss', 'setFigureGloss', 2],
+        ['light-intensity', 'setLightIntensity', 2]
+    ];
+    materialSliders.forEach(([id, setter, decimals]) => {
+        const input = document.getElementById(id);
+        const label = document.getElementById(id + '-value');
+        input?.addEventListener('input', (e) => {
+            if (label) label.textContent = parseFloat(e.target.value).toFixed(decimals);
+            GraphicsEngine[setter](e.target.value);
+        });
+    });
+
     // См. комментарий у аналогичного вызова в chess/event-handlers.js.
     GraphicsEngine.syncAppearanceUI();
     if (figureScaleValue && figureScaleInput) figureScaleValue.textContent = parseFloat(figureScaleInput.value).toFixed(2);
+    materialSliders.forEach(([id, , decimals]) => {
+        const input = document.getElementById(id);
+        const label = document.getElementById(id + '-value');
+        if (input && label) label.textContent = parseFloat(input.value).toFixed(decimals);
+    });
 
     document.getElementById('chat-input')?.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
