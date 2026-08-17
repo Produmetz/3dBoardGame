@@ -99,63 +99,78 @@
             </div>
         </div>
 
-        <div class="panel-section">
-            <h3>Загрузка позиций</h3>
-            <div class="panel-content">
-                <label for="folder-input" class="game-btn" style="display:block; text-align:center; width:100%; margin-bottom:10px;">
-                    Выбрать папку с позициями
-                </label>
-                <input type="file" id="folder-input" webkitdirectory directory multiple style="display:none;">
+        <div class="buttons-row" id="tutorial-tabs">
+            <button id="tab-btn-tasks" class="game-btn active">Задачи</button>
+            <button id="tab-btn-help" class="game-btn">Справка</button>
+        </div>
 
-                <button class="accordion-header">Пешки</button>
-                <div class="accordion-content">
-                    <div id="pawn-positions" class="positions-container"></div>
+        <div id="tab-tasks">
+            <div class="panel-section">
+                <h3>Загрузка позиций</h3>
+                <div class="panel-content">
+                    <label for="folder-input" class="game-btn" style="display:block; text-align:center; width:100%; margin-bottom:10px;">
+                        Выбрать папку с позициями
+                    </label>
+                    <input type="file" id="folder-input" webkitdirectory directory multiple style="display:none;">
+
+                    <button class="accordion-header">Пешки</button>
+                    <div class="accordion-content">
+                        <div id="pawn-positions" class="positions-container"></div>
+                    </div>
+
+                    <button class="accordion-header">Ладьи</button>
+                    <div class="accordion-content">
+                        <div id="rook-positions" class="positions-container"></div>
+                    </div>
+
+                    <button class="accordion-header">Кони</button>
+                    <div class="accordion-content">
+                        <div id="knight-positions" class="positions-container"></div>
+                    </div>
+
+                    <button class="accordion-header">Слоны</button>
+                    <div class="accordion-content">
+                        <div id="bishop-positions" class="positions-container"></div>
+                    </div>
+
+                    <button class="accordion-header">Триорты</button>
+                    <div class="accordion-content">
+                        <div id="triort-positions" class="positions-container"></div>
+                    </div>
+
+                    <button class="accordion-header">Ферзи</button>
+                    <div class="accordion-content">
+                        <div id="queen-positions" class="positions-container"></div>
+                    </div>
+
+                    <button class="accordion-header">Короли</button>
+                    <div class="accordion-content">
+                        <div id="king-positions" class="positions-container"></div>
+                    </div>
+
+                    <button class="accordion-header">Шах, мат и пат</button>
+                    <div class="accordion-content">
+                        <div id="special-positions" class="positions-container"></div>
+                    </div>
                 </div>
+            </div>
 
-                <button class="accordion-header">Ладьи</button>
-                <div class="accordion-content">
-                    <div id="rook-positions" class="positions-container"></div>
-                </div>
-
-                <button class="accordion-header">Кони</button>
-                <div class="accordion-content">
-                    <div id="knight-positions" class="positions-container"></div>
-                </div>
-
-                <button class="accordion-header">Слоны</button>
-                <div class="accordion-content">
-                    <div id="bishop-positions" class="positions-container"></div>
-                </div>
-
-                <button class="accordion-header">Триорты</button>
-                <div class="accordion-content">
-                    <div id="triort-positions" class="positions-container"></div>
-                </div>
-
-                <button class="accordion-header">Ферзи</button>
-                <div class="accordion-content">
-                    <div id="queen-positions" class="positions-container"></div>
-                </div>
-
-                <button class="accordion-header">Короли</button>
-                <div class="accordion-content">
-                    <div id="king-positions" class="positions-container"></div>
-                </div>
-
-                <button class="accordion-header">Шах, мат и пат</button>
-                <div class="accordion-content">
-                    <div id="special-positions" class="positions-container"></div>
+            <div class="panel-section">
+                <h3>Действия</h3>
+                <div class="panel-content">
+                    <div class="buttons-row">
+                        <button id="standard-position" class="game-btn">Стандартная позиция</button>
+                        <button id="clear-board" class="game-btn">Очистить доску</button>
+                        <button id="return-to-game" class="game-btn" style="background:#4cc9f0;color:#0a192f;">Вернуться в игру</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="panel-section">
-            <h3>Действия</h3>
-            <div class="panel-content">
-                <div class="buttons-row">
-                    <button id="clear-board" class="game-btn">Очистить доску</button>
-                    <button id="return-to-game" class="game-btn" style="background:#4cc9f0;color:#0a192f;">Вернуться в игру</button>
-                </div>
+        <div id="tab-help" class="hidden">
+            <div class="panel-section">
+                <h3>Справка</h3>
+                <div class="panel-content" id="tab-help-content"></div>
             </div>
         </div>
     </div>
@@ -197,8 +212,10 @@
                 <div class="sub-content">
                     <p>• Выберите папку с сохранёнными позициями фигур</p>
                     <p>• Кликните на позицию из списка, чтобы загрузить её на доску</p>
+                    <p>• «Стандартная позиция» в разделе «Действия» ставит обычную стартовую расстановку</p>
                     <p>• ПКМ + движение мыши — вращение камеры, колесо мыши — приближение</p>
                     <p>• Кнопки осей (X/Y/Z) рядом с доской — увеличенное расстояние между ячейками поля вдоль выбранной оси</p>
+                    <p>• Подробная справка по всему сайту — во вкладке «Справка» рядом с «Задачи»</p>
                 </div>
             </div>
 
@@ -219,6 +236,7 @@
     <script src="game.js"></script>
     <script src="../network.js"></script>
     <script src="figures-tutorial.js"></script>
+    <script src="../help-content.js"></script>
     <script src="../nav.js"></script>
     <script>Nav.init('figures-tutorial');</script>
 
@@ -241,6 +259,28 @@
 
             document.getElementById('return-to-game').addEventListener('click', function () {
                 window.location.href = 'chess.html';
+            });
+
+            document.getElementById('standard-position').addEventListener('click', function () {
+                loadTask({ pieces: [], currentPlayer: 'White', useInitGame: true });
+            });
+
+            // Клик-переключение для .sub-section h4 внутри этого контента уже
+            // навешивается ниже общим document.querySelectorAll('.sub-section h4')
+            // (для справки в настройках) — он не привязан только к модалке, так
+            // что достаточно вставить разметку ДО того вызова, повторно не вешаем.
+            document.getElementById('tab-help-content').innerHTML = SiteHelp.html;
+            document.getElementById('tab-btn-tasks').addEventListener('click', () => {
+                document.getElementById('tab-btn-tasks').classList.add('active');
+                document.getElementById('tab-btn-help').classList.remove('active');
+                document.getElementById('tab-tasks').classList.remove('hidden');
+                document.getElementById('tab-help').classList.add('hidden');
+            });
+            document.getElementById('tab-btn-help').addEventListener('click', () => {
+                document.getElementById('tab-btn-help').classList.add('active');
+                document.getElementById('tab-btn-tasks').classList.remove('active');
+                document.getElementById('tab-help').classList.remove('hidden');
+                document.getElementById('tab-tasks').classList.add('hidden');
             });
 
             document.getElementById('toggle-panels').addEventListener('click', () => {
@@ -309,14 +349,35 @@
         // приём сразу. pieces используют тот же {x,y,z,figureType,color}, что
         // и формат файлов позиций, поэтому идут через applyPiecesToBoard.
         const PIECE_TASKS = {
-            pawn: [{
-                name: 'Ход и взятие',
-                pieces: [
-                    { x: 2, y: 2, z: 1, figureType: 'Pawn', color: 'White' },
-                    { x: 3, y: 2, z: 2, figureType: 'Pawn', color: 'Black' },
-                    { x: 1, y: 2, z: 2, figureType: 'Pawn', color: 'Black' }
-                ]
-            }],
+            pawn: [
+                {
+                    name: 'Ход и взятие',
+                    pieces: [
+                        { x: 2, y: 2, z: 1, figureType: 'Pawn', color: 'White' },
+                        { x: 3, y: 2, z: 2, figureType: 'Pawn', color: 'Black' },
+                        { x: 1, y: 2, z: 2, figureType: 'Pawn', color: 'Black' }
+                    ]
+                },
+                {
+                    // Белая пешка уже стоит так, будто только что шагнула на 2
+                    // клетки с z=1 на z=3 — enPassantTarget указывает на
+                    // клетку z=2, которую она перепрыгнула. Чёрная пешка рядом
+                    // может её взять, зайдя именно на эту клетку.
+                    name: 'Взятие на проходе',
+                    pieces: [
+                        { x: 2, y: 2, z: 3, figureType: 'Pawn', color: 'White' },
+                        { x: 3, y: 2, z: 3, figureType: 'Pawn', color: 'Black' }
+                    ],
+                    currentPlayer: 'Black',
+                    enPassantTarget: [2, 2, 2]
+                },
+                {
+                    // Пешке остался один шаг до дальнего слоя (z=7) — сходите
+                    // ей вперёд, чтобы увидеть окно выбора фигуры превращения.
+                    name: 'Превращение',
+                    pieces: [{ x: 2, y: 2, z: 6, figureType: 'Pawn', color: 'White' }]
+                }
+            ],
             rook: [{
                 name: 'Ход по прямым',
                 pieces: [
@@ -340,10 +401,22 @@
                 name: 'Все направления сразу',
                 pieces: [{ x: 2, y: 2, z: 3, figureType: 'Queen', color: 'White' }]
             }],
-            king: [{
-                name: 'Ход на одну клетку',
-                pieces: [{ x: 2, y: 2, z: 3, figureType: 'King', color: 'White' }]
-            }]
+            king: [
+                {
+                    name: 'Ход на одну клетку',
+                    pieces: [{ x: 2, y: 2, z: 3, figureType: 'King', color: 'White' }]
+                },
+                {
+                    // Король (3,3,0) и ладья (0,0,0) стоят на одной XY-диагонали,
+                    // ни один не ходил, путь между ними свободен — король может
+                    // пойти на (1,1,0), ладья при этом встанет на (2,2,0).
+                    name: 'Рокировка (диагональная)',
+                    pieces: [
+                        { x: 3, y: 3, z: 0, figureType: 'King', color: 'White' },
+                        { x: 0, y: 0, z: 0, figureType: 'Rook', color: 'White' }
+                    ]
+                }
+            ]
         };
 
         // Полный набор из 7 чёрных пешек, окружающих короля в углу (0,0,0) —
@@ -420,7 +493,13 @@
         }
 
         function loadTask(task) {
-            applyPiecesToBoard(task.pieces);
+            if (task.useInitGame) {
+                ChessEngine.InitGame();
+                GraphicsEngine.createAndFillBoardOnPole(ChessEngine.Pole);
+            } else {
+                applyPiecesToBoard(task.pieces);
+                if (task.enPassantTarget) ChessEngine.SetEnPassantTarget(task.enPassantTarget);
+            }
             if (window.chessGame) {
                 window.chessGame.currentPlayer = task.currentPlayer || 'White';
                 window.chessGame.moveHistory = [];

@@ -107,6 +107,15 @@ class PositionEditor {
             createAndFillBoardOnPole(ChessEngine.Pole);
         });
 
+        // Стандартная стартовая позиция — использует тот же InitGame(),
+        // которым игра сама расставляет фигуры, так что результат гарантированно
+        // играбелен (не сталкивается с багом ниже, актуальным для ручной расстановки).
+        document.getElementById('standard-position').addEventListener('click', () => {
+            ChessEngine.InitGame();
+            createAndFillBoardOnPole(ChessEngine.Pole);
+            document.getElementById('turn-white').click();
+        });
+
 
         // Обработчики для изменения осей
         document.getElementById('axis-x').addEventListener('click', () => this.handleAxisChange('axis-x'));
@@ -192,6 +201,14 @@ class PositionEditor {
         return names[figureType] || figureType;
     }
 
+    // Настоящий экземпляр класса фигуры (а не голый {Name,Color}) — на нём
+    // есть getMaybeMoveThisFigure()/getLotMaybeMove(), без которых ChessEngine.MaybeMoves
+    // упадёт, как только эту фигуру попробуют подвинуть в самой игре.
+    createFigureInstance(figureType, color) {
+        const ctor = ChessEngine[`${color}${figureType}`];
+        return ctor ? new ctor() : null;
+    }
+
     handleCanvasClick(event) {
         // Получаем координаты клетки по клику
         const cellCoords = cellFromClick(event.clientX, event.clientY);
@@ -205,12 +222,11 @@ class PositionEditor {
             createAndFillBoardOnPole(ChessEngine.Pole);
         } else if (this.selectedFigure) {
             // Режим размещения фигуры
-            const figure = {
-                Name: this.selectedFigure,
-                Color: this.selectedColor
-            };
-            ChessEngine.Pole[i][j][k] = figure;
-            createAndFillBoardOnPole(ChessEngine.Pole);
+            const figure = this.createFigureInstance(this.selectedFigure, this.selectedColor);
+            if (figure) {
+                ChessEngine.Pole[i][j][k] = figure;
+                createAndFillBoardOnPole(ChessEngine.Pole);
+            }
         }
     }
 
@@ -303,7 +319,16 @@ class PositionEditor {
                                     if (k < cells.length) {
                                         const cell = cells[k].trim();
                                         if (cell !== 'null') {
-                                            ChessEngine.Pole[i][j][k] = JSON.parse(cell);
+                                            // JSON.parse только восстанавливает данные (Name/Color/hasMoved),
+                                            // не прототип класса — пересоздаём настоящий экземпляр фигуры.
+                                            const data = JSON.parse(cell);
+                                            const figure = this.createFigureInstance(data.Name, data.Color);
+                                            if (figure) {
+                                                figure.hasMoved = !!data.hasMoved;
+                                                ChessEngine.Pole[i][j][k] = figure;
+                                            } else {
+                                                ChessEngine.Pole[i][j][k] = null;
+                                            }
                                         } else {
                                             ChessEngine.Pole[i][j][k] = null;
                                         }
