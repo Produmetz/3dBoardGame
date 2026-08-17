@@ -393,14 +393,44 @@ const TraditionalModelManager = {
     ensureLoaded() {
         if (this.isReady()) return Promise.resolve();
         if (this._loadingPromise) return this._loadingPromise;
-        this._loadingPromise = Promise.all(
+        // allSettled, not all - a single failed piece (e.g. a 404, or a
+        // model file that got moved) shouldn't take down the five that DID
+        // load; each successfully-loaded one still populates this.models
+        // before we get here regardless.
+        this._loadingPromise = Promise.allSettled(
             Object.entries(this.PIECE_FILES).map(([type, file]) => new Promise((resolve, reject) => {
                 new THREE.GLTFLoader().load('models/' + file, (gltf) => {
                     this.models[type] = normalizeLoadedModel(gltf.scene, 0.95);
                     resolve();
                 }, undefined, reject);
             }))
-        );
+        ).then((results) => {
+            const failed = results.filter((r) => r.status === 'rejected');
+            if (failed.length) {
+                // The most common cause by far: the page was opened directly
+                // as a file (file://) instead of through a local web server -
+                // browsers block scripts from fetching other files off disk
+                // that way, so GLTFLoader's requests fail silently unless we
+                // surface it ourselves.
+                // GLTFLoader's onError often hands back a raw ProgressEvent for
+                // network-level failures (404, blocked request), not an Error
+                // with a useful .message - String(ProgressEvent) is just
+                // "[object ProgressEvent]", so fall back to a generic message
+                // rather than show that.
+                const rawReason = failed[0].reason;
+                const reason = location.protocol === 'file:'
+                    ? 'страница открыта как файл (file://) — браузер не даёт скриптам подгружать другие файлы прямо с диска. Откройте сайт через локальный веб-сервер (например, npx serve или python -m http.server), а не двойным кликом по .html.'
+                    : (rawReason && rawReason.message) || 'не удалось загрузить файл модели (сеть/404) — см. вкладку Network в инструментах разработчика';
+                console.error('TraditionalModelManager: не удалось загрузить модели набора "Классический" —', reason, failed);
+                if (typeof UI !== 'undefined' && UI.toast) {
+                    UI.toast('Не удалось загрузить часть моделей "Классического" набора: ' + reason, 'error');
+                }
+                // Не запоминаем неудачу навсегда - следующий вызов (например,
+                // после того как сайт открыли правильно) попробует снова
+                // вместо того, чтобы вечно отдавать этот же зависший промис.
+                this._loadingPromise = null;
+            }
+        });
         return this._loadingPromise;
     },
 
