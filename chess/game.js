@@ -188,7 +188,8 @@ class Game {
 
     isGameOverByMate() {
         const state = ChessEngine.FoundKing(ChessEngine.Pole);
-        return state === 'CheckMateWhite' || state === 'CheckMateBlack';
+        if (state === 'CheckMateWhite' || state === 'CheckMateBlack') return true;
+        return ChessEngine.IsStalemate(ChessEngine.Pole, this.currentPlayer === 'White');
     }
 
     updateBotStatusUI() {
@@ -483,7 +484,15 @@ class Game {
                 }
                 break;
             default:
-                document.getElementById('game-status').textContent = '';
+                if (ChessEngine.IsStalemate(ChessEngine.Pole, this.currentPlayer === 'White')) {
+                    document.getElementById('game-status').textContent =
+                        `Пат! У ${this.currentPlayer === 'White' ? 'белых' : 'чёрных'} нет ходов. Ничья.`;
+                    if (this.isNetworkGame) {
+                        this.networkManager.sendGameOver();
+                    }
+                } else {
+                    document.getElementById('game-status').textContent = '';
+                }
                 break;
         }
     }
@@ -506,6 +515,7 @@ class Game {
 
     updateMoveHistory() {
         const historyList = document.getElementById('history-list');
+        if (!historyList) return; // pages like figures-tutorial.html reuse Game without a move-history panel
         historyList.innerHTML = '';
 
         this.moveHistory.forEach((move, index) => {

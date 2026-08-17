@@ -937,7 +937,13 @@ function InMaybeMoves(x_1, y_1, z_1, NextPole) {
 
 function CheckMate(x, y, z, Pole, COLOR) {
   let CL;
-  let result;
+  // Стоит true: "мат, пока не найден ход, снимающий шах". Если у короля или
+  // у всех его фигур вообще нет ни одного хода-кандидата (например, король
+  // в углу полностью окружён своими же фигурами), циклы ниже ни разу не
+  // выполнятся и result никогда не будет переприсвоен — раньше он оставался
+  // undefined, что в вызывающем коде (FoundKing) трактовалось как "не мат"
+  // из-за приведения к false, хотя это как раз мат.
+  let result = true;
   let SecondResult = [];
   let ThirdResult = [];
   let NextPole = [];
@@ -1149,8 +1155,28 @@ function IsCheck(color, pole) {
   return InMaybeMoves(kingPos.x, kingPos.y, kingPos.z, pole);
 }
 
+// Пат: у стороны isWhite нет ни одного легального хода, но её король не под
+// шахом (иначе это был бы мат, а не пат — CheckMate уже определяет это).
+function IsStalemate(Pole, isWhite) {
+  const color = isWhite ? 'White' : 'Black';
+  if (IsCheck(color, Pole)) return false;
+
+  for (let x = 0; x < 6; x++) {
+    for (let y = 0; y < 6; y++) {
+      for (let z = 0; z < 8; z++) {
+        const piece = Pole[x][y][z];
+        if (piece && piece.Color === color && MaybeMovesWithCheck(x, y, z, Pole).length > 0) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
 // Экспорт API для использования извне
 window.ChessEngine = {
+  IsStalemate: IsStalemate,
   Pole: Pole,
   InitGame: InitGame,
   MaybeMoves: MaybeMoves,

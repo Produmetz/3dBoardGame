@@ -141,6 +141,11 @@
                 <div class="accordion-content">
                     <div id="king-positions" class="positions-container"></div>
                 </div>
+
+                <button class="accordion-header">Шах, мат и пат</button>
+                <div class="accordion-content">
+                    <div id="special-positions" class="positions-container"></div>
+                </div>
             </div>
         </div>
 
@@ -296,11 +301,156 @@
                 ChessEngine.FillPole();
                 GraphicsEngine.createAndFillBoardOnPole(ChessEngine.Pole);
             });
+
+            renderBuiltInTasks();
         });
 
+        // Готовые задачи — не требуют загрузки папки, показывают конкретный
+        // приём сразу. pieces используют тот же {x,y,z,figureType,color}, что
+        // и формат файлов позиций, поэтому идут через applyPiecesToBoard.
+        const PIECE_TASKS = {
+            pawn: [{
+                name: 'Ход и взятие',
+                pieces: [
+                    { x: 2, y: 2, z: 1, figureType: 'Pawn', color: 'White' },
+                    { x: 3, y: 2, z: 2, figureType: 'Pawn', color: 'Black' },
+                    { x: 1, y: 2, z: 2, figureType: 'Pawn', color: 'Black' }
+                ]
+            }],
+            rook: [{
+                name: 'Ход по прямым',
+                pieces: [
+                    { x: 2, y: 2, z: 3, figureType: 'Rook', color: 'White' },
+                    { x: 5, y: 2, z: 3, figureType: 'Pawn', color: 'Black' }
+                ]
+            }],
+            knight: [{
+                name: 'Ход буквой Г',
+                pieces: [{ x: 2, y: 2, z: 3, figureType: 'Knight', color: 'White' }]
+            }],
+            bishop: [{
+                name: 'Ход по плоским диагоналям',
+                pieces: [{ x: 2, y: 2, z: 3, figureType: 'Bishop', color: 'White' }]
+            }],
+            triort: [{
+                name: 'Ход по пространственным диагоналям',
+                pieces: [{ x: 2, y: 2, z: 3, figureType: 'Triort', color: 'White' }]
+            }],
+            queen: [{
+                name: 'Все направления сразу',
+                pieces: [{ x: 2, y: 2, z: 3, figureType: 'Queen', color: 'White' }]
+            }],
+            king: [{
+                name: 'Ход на одну клетку',
+                pieces: [{ x: 2, y: 2, z: 3, figureType: 'King', color: 'White' }]
+            }]
+        };
+
+        // Полный набор из 7 чёрных пешек, окружающих короля в углу (0,0,0) —
+        // все три соседние по каждой оси клетки заняты своим цветом, король
+        // не может пойти ни на одну из них.
+        const CORNERED_BLACK_KING = [
+            { x: 0, y: 0, z: 0, figureType: 'King', color: 'Black' },
+            { x: 1, y: 0, z: 0, figureType: 'Pawn', color: 'Black' },
+            { x: 0, y: 1, z: 0, figureType: 'Pawn', color: 'Black' },
+            { x: 0, y: 0, z: 1, figureType: 'Pawn', color: 'Black' },
+            { x: 1, y: 1, z: 0, figureType: 'Pawn', color: 'Black' },
+            { x: 1, y: 0, z: 1, figureType: 'Pawn', color: 'Black' },
+            { x: 0, y: 1, z: 1, figureType: 'Pawn', color: 'Black' },
+            { x: 1, y: 1, z: 1, figureType: 'Pawn', color: 'Black' }
+        ];
+
+        const SPECIAL_TASKS = [
+            {
+                name: 'Шах',
+                currentPlayer: 'White',
+                pieces: [
+                    { x: 2, y: 2, z: 3, figureType: 'King', color: 'White' },
+                    { x: 2, y: 2, z: 6, figureType: 'Rook', color: 'Black' },
+                    { x: 5, y: 5, z: 0, figureType: 'King', color: 'Black' }
+                ]
+            },
+            {
+                // Конь бьёт короля в углу, все семь соседних клеток заняты
+                // своими пешками — королю некуда пойти, никто не может ни
+                // закрыться, ни срубить коня. Настоящий мат, не иллюзия.
+                name: 'Мат',
+                currentPlayer: 'Black',
+                pieces: [
+                    ...CORNERED_BLACK_KING,
+                    { x: 0, y: 1, z: 2, figureType: 'Knight', color: 'White' },
+                    { x: 5, y: 5, z: 7, figureType: 'King', color: 'White' }
+                ]
+            },
+            {
+                // Та же коробка вокруг короля, но без шаха — королю просто
+                // некуда пойти, при этом он не атакован. Ничья, а не мат.
+                name: 'Пат',
+                currentPlayer: 'Black',
+                pieces: [
+                    ...CORNERED_BLACK_KING,
+                    { x: 5, y: 5, z: 7, figureType: 'King', color: 'White' }
+                ]
+            }
+        ];
+
+        function renderBuiltInTasks() {
+            Object.keys(PIECE_TASKS).forEach(figureType => {
+                const container = document.getElementById(`${figureType}-positions`);
+                if (!container) return;
+                PIECE_TASKS[figureType].forEach(task => {
+                    container.appendChild(makeTaskButton(task.name, () => loadTask(task)));
+                });
+            });
+
+            const specialContainer = document.getElementById('special-positions');
+            if (specialContainer) {
+                SPECIAL_TASKS.forEach(task => {
+                    specialContainer.appendChild(makeTaskButton(task.name, () => loadTask(task)));
+                });
+            }
+        }
+
+        function makeTaskButton(label, onClick) {
+            const button = document.createElement('button');
+            button.className = 'position-btn';
+            button.textContent = label;
+            button.addEventListener('click', onClick);
+            return button;
+        }
+
+        function loadTask(task) {
+            applyPiecesToBoard(task.pieces);
+            if (window.chessGame) {
+                window.chessGame.currentPlayer = task.currentPlayer || 'White';
+                window.chessGame.moveHistory = [];
+                GraphicsEngine.unselectCell();
+                GraphicsEngine.unHighlightingPossibleMoves();
+                window.chessGame.updateUI();
+                window.chessGame.checkGameState();
+            }
+        }
+
+        function createFigureInstance(figureType, color) {
+            const ctor = ChessEngine[`${color}${figureType}`];
+            return ctor ? new ctor() : null;
+        }
+
+        function applyPiecesToBoard(pieces) {
+            ChessEngine.FillPole();
+            pieces.forEach(({ x, y, z, figureType, color }) => {
+                const figure = createFigureInstance(figureType, color);
+                if (figure && x >= 0 && x < 6 && y >= 0 && y < 6 && z >= 0 && z < 8) {
+                    ChessEngine.Pole[x][y][z] = figure;
+                }
+            });
+            GraphicsEngine.createAndFillBoardOnPole(ChessEngine.Pole);
+        }
+
         function processPositionFiles(files) {
-            const containers = document.querySelectorAll('.positions-container');
-            containers.forEach(container => { container.innerHTML = ''; });
+            // Убираем только ранее загруженные из файлов кнопки — встроенные
+            // задачи (renderBuiltInTasks) остаются на месте.
+            document.querySelectorAll('.position-btn.from-file').forEach(btn => btn.remove());
 
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
@@ -317,13 +467,9 @@
                 const container = document.getElementById(containerId);
                 if (!container) continue;
 
-                const button = document.createElement('button');
-                button.className = 'position-btn';
-                button.textContent = figureNumber;
+                const button = makeTaskButton(figureNumber, () => loadPositionFromFile(file));
+                button.classList.add('from-file');
                 button.dataset.fileName = fileName;
-                button.addEventListener('click', function () {
-                    loadPositionFromFile(file);
-                });
                 container.appendChild(button);
             }
         }
@@ -334,6 +480,7 @@
                 try {
                     const content = e.target.result;
                     const lines = content.split('\n');
+                    const pieces = [];
 
                     for (let i = 0; i < lines.length; i++) {
                         const line = lines[i].trim();
@@ -342,41 +489,16 @@
                         const parts = line.split(',');
                         if (parts.length < 5) continue;
 
-                        const x = parseInt(parts[0]);
-                        const y = parseInt(parts[1]);
-                        const z = parseInt(parts[2]);
-                        const figureType = parts[3];
-                        const color = parts[4];
-
-                        let figure = null;
-                        if (color === 'White') {
-                            switch (figureType) {
-                                case 'Pawn': figure = new ChessEngine.WhitePawn(); break;
-                                case 'Rook': figure = new ChessEngine.WhiteRook(); break;
-                                case 'Knight': figure = new ChessEngine.WhiteKnight(); break;
-                                case 'Bishop': figure = new ChessEngine.WhiteBishop(); break;
-                                case 'Triort': figure = new ChessEngine.WhiteTriort(); break;
-                                case 'Queen': figure = new ChessEngine.WhiteQueen(); break;
-                                case 'King': figure = new ChessEngine.WhiteKing(); break;
-                            }
-                        } else {
-                            switch (figureType) {
-                                case 'Pawn': figure = new ChessEngine.BlackPawn(); break;
-                                case 'Rook': figure = new ChessEngine.BlackRook(); break;
-                                case 'Knight': figure = new ChessEngine.BlackKnight(); break;
-                                case 'Bishop': figure = new ChessEngine.BlackBishop(); break;
-                                case 'Triort': figure = new ChessEngine.BlackTriort(); break;
-                                case 'Queen': figure = new ChessEngine.BlackQueen(); break;
-                                case 'King': figure = new ChessEngine.BlackKing(); break;
-                            }
-                        }
-
-                        if (figure && x >= 0 && x < 6 && y >= 0 && y < 6 && z >= 0 && z < 8) {
-                            ChessEngine.Pole[x][y][z] = figure;
-                        }
+                        pieces.push({
+                            x: parseInt(parts[0]),
+                            y: parseInt(parts[1]),
+                            z: parseInt(parts[2]),
+                            figureType: parts[3],
+                            color: parts[4]
+                        });
                     }
 
-                    GraphicsEngine.createAndFillBoardOnPole(ChessEngine.Pole);
+                    applyPiecesToBoard(pieces);
                 } catch (error) {
                     console.error('Ошибка при загрузке позиции:', error);
                     UI.toast('Ошибка при загрузке позиции из файла: ' + file.name, 'error');
