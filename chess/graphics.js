@@ -208,16 +208,16 @@ const torusKnotGeometry = new THREE.TorusKnotGeometry(0.4, 0.15, 64, 12);
 const octahedronGeometry = new THREE.OctahedronGeometry(0.6);
 const dodecahedronGeometry = new THREE.DodecahedronGeometry(0.6);
 
-// Геометрии для Триорта в наборе "Классический" — общее основание+стебель
-// (тот же приём, что использовался бы для точёных фигур), навершие —
-// собственная придумка в том же стиле (три узла вокруг стебля, по одному на
-// каждую пространственную ось, которые фигура пересекает по диагонали
-// одновременно). Остальные 6 типов фигур в этом наборе больше не собираются
-// из примитивов — грузятся как готовые модели, см. TraditionalModelManager.
+// Геометрии для Триорта в наборе "Классический" — общее основание+стебель,
+// тот же язык форм, что и у настоящих фигур (у каждой из шести — одно
+// навершие: шар/башенка/митра/корона/крест), навершие Триорта — гранёный
+// "камень" (октаэдр), одна цельная деталь, а не набор отдельных шариков.
+// Остальные 6 типов фигур в этом наборе больше не собираются из
+// примитивов — грузятся как готовые модели, см. TraditionalModelManager.
 const tradBaseGeometry = new THREE.CylinderGeometry(0.34, 0.4, 0.22, 16);
 const tradStemGeometry = new THREE.CylinderGeometry(0.16, 0.24, 0.5, 16);
-const tradTriortCoreGeometry = new THREE.OctahedronGeometry(0.16);
-const tradTriortNodeGeometry = new THREE.SphereGeometry(0.13, 12, 12);
+const tradTriortGemGeometry = new THREE.OctahedronGeometry(0.26);
+const tradTriortCollarGeometry = new THREE.CylinderGeometry(0.2, 0.16, 0.08, 16);
 
 // Убирает и уничтожает материалы (не геометрию — она общая и живёт всё время
 // страницы) всех дочерних мешей клетки. Вызывается при замене/удалении фигур,
@@ -289,25 +289,24 @@ function traditionalMaterial(color) {
 }
 
 // Триорта в обычных шахматах нет — это фигура только этого варианта, так что
-// для неё нет модели в chess/models/ (см. TraditionalModelManager ниже) и она
-// продолжает собираться из примитивов, в том же "точёном" стиле (общие
-// основание+стебель), что и раньше, просто теперь единственная такая.
+// для неё нет модели в chess/models/ (см. TraditionalModelManager ниже).
+// Собрана из тех же примитивов "основание+стебель", что и настоящие фигуры
+// этого набора, с ОДНИМ навершием — гранёным "камнем" на воротничке, как у
+// пешки шар или у слона митра — а не тремя отдельными шариками врозь: та
+// версия читалась как что-то из другого набора, не как ещё одна точёная
+// фигура этого же комплекта.
 function createTraditionalTriort(color) {
     const material = traditionalMaterial(color);
     const group = new THREE.Group();
     const base = new THREE.Mesh(tradBaseGeometry, material); base.position.y = -0.3;
     const stem = new THREE.Mesh(tradStemGeometry, material); stem.position.y = -0.02;
-    const core = new THREE.Mesh(tradTriortCoreGeometry, material); core.position.y = 0.36;
-    const node1 = new THREE.Mesh(tradTriortNodeGeometry, material); node1.position.set(0.2, 0.5, 0);
-    const node2 = new THREE.Mesh(tradTriortNodeGeometry, material); node2.position.set(-0.17, 0.5, 0.17);
-    const node3 = new THREE.Mesh(tradTriortNodeGeometry, material); node3.position.set(-0.17, 0.5, -0.17);
-    group.add(base, stem, core, node1, node2, node3);
-    // Без масштабирования эта фигура на треть шире загруженных моделей
-    // остальных 6 типов (0.8 против ~0.45-0.52) - они нормализованы в
-    // normalizeLoadedModel по наибольшему измерению, а эта собрана из
-    // примитивов с абсолютными размерами. Подгоняем вручную под тот же
-    // силуэт: близкая ширина, чуть меньше высоты (у неё и так нет высокого
-    // навершия вроде короны/креста, которое "вытягивало" бы её).
+    const collar = new THREE.Mesh(tradTriortCollarGeometry, material); collar.position.y = 0.25;
+    const gem = new THREE.Mesh(tradTriortGemGeometry, material); gem.position.y = 0.42; gem.rotation.y = Math.PI / 8;
+    group.add(base, stem, collar, gem);
+    // Без масштабирования эта фигура заметно шире загруженных моделей
+    // остальных 6 типов — они нормализованы в normalizeLoadedModel по
+    // наибольшему измерению, а эта собрана из примитивов с абсолютными
+    // размерами. Подгоняем вручную под тот же силуэт.
     group.scale.set(0.62, 0.95, 0.62);
     return group;
 }
