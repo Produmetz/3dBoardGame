@@ -1051,7 +1051,26 @@ function FoundKing(Pole) {
   return 'NotCheck';
 }
 
-function Move(x, y, z, x_1, y_1, z_1, Pole, ColorMove) {
+// Клетка последнего ряда для цвета, на которой пешка превращается —
+// White идёт от z=1 к возрастающему z, значит её дальний край z=7; Black
+// идёт от z=6 к убывающему z, дальний край z=0.
+function IsPromotionSquare(z_1, isWhite) {
+  return isWhite ? z_1 === 7 : z_1 === 0;
+}
+
+function CreatePromotedFigure(figureType, color) {
+  const isWhite = color === 'White';
+  switch (figureType) {
+    case 'Rook': return isWhite ? new WhiteRook() : new BlackRook();
+    case 'Bishop': return isWhite ? new WhiteBishop() : new BlackBishop();
+    case 'Knight': return isWhite ? new WhiteKnight() : new BlackKnight();
+    case 'Triort': return isWhite ? new WhiteTriort() : new BlackTriort();
+    case 'Queen':
+    default: return isWhite ? new WhiteQueen() : new BlackQueen();
+  }
+}
+
+function Move(x, y, z, x_1, y_1, z_1, Pole, ColorMove, promotionType) {
   const movingPiece = Pole[x][y][z];
   const colorMatches =
     (ColorMove && movingPiece && movingPiece.Color == 'White') ||
@@ -1108,7 +1127,23 @@ function Move(x, y, z, x_1, y_1, z_1, Pole, ColorMove) {
     }
   }
 
-  Pole[x_1][y_1][z_1] = movingPiece;
+  // Превращение пешки: дошедшая до дальнего ряда пешка заменяется новой
+  // фигурой выбранного типа (по умолчанию — ферзь). Создаём НОВЫЙ объект
+  // вместо мутации movingPiece.Name, чтобы game.js.undoMove() продолжал
+  // работать без изменений — там ссылка на movingPiece (сохранённая ДО
+  // вызова Move) кладётся обратно на исходную клетку при отмене хода.
+  let placedPiece = movingPiece;
+  let promotion = null;
+  if (movingPiece.Name === 'Pawn' && IsPromotionSquare(z_1, ColorMove)) {
+    const chosenType = ['Queen', 'Rook', 'Bishop', 'Knight', 'Triort'].includes(promotionType)
+      ? promotionType
+      : 'Queen';
+    placedPiece = CreatePromotedFigure(chosenType, movingPiece.Color);
+    placedPiece.hasMoved = true;
+    promotion = { figureType: chosenType };
+  }
+
+  Pole[x_1][y_1][z_1] = placedPiece;
   Pole[x][y][z] = null;
   movingPiece.hasMoved = true;
 
@@ -1126,7 +1161,8 @@ function Move(x, y, z, x_1, y_1, z_1, Pole, ColorMove) {
     board: Pole,
     castling: castling,
     enPassantCapture: enPassantCapture,
-    previousEnPassantTarget: priorEnPassantTarget
+    previousEnPassantTarget: priorEnPassantTarget,
+    promotion: promotion
   };
 }
 
@@ -1177,6 +1213,8 @@ function IsStalemate(Pole, isWhite) {
 // Экспорт API для использования извне
 window.ChessEngine = {
   IsStalemate: IsStalemate,
+  IsPromotionSquare: IsPromotionSquare,
+  CreatePromotedFigure: CreatePromotedFigure,
   Pole: Pole,
   InitGame: InitGame,
   MaybeMoves: MaybeMoves,

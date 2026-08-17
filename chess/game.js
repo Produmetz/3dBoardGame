@@ -165,6 +165,15 @@ class Game {
 
         // Если есть выбранная клетка и клик на возможный ход
         if (GraphicsEngine.highlightedCell && this.isPossibleMove(i, j, k) && this.isMyTurn) {
+            const from = GraphicsEngine.highlightedCell;
+            const movingFigure = ChessEngine.Pole[from.i][from.j][from.k];
+            if (movingFigure && movingFigure.Name === 'Pawn' && ChessEngine.IsPromotionSquare(k, movingFigure.Color === 'White')) {
+                // Превращение пешки — спрашиваем игрока, во что превратить,
+                // и завершаем ход только после выбора (см. completePromotion).
+                this.pendingPromotionMove = { from: { i: from.i, j: from.j, k: from.k }, to: { i, j, k } };
+                this.showPromotionModal();
+                return;
+            }
             // Выполняем ход
             this.makeMove(GraphicsEngine.highlightedCell.i, GraphicsEngine.highlightedCell.j, GraphicsEngine.highlightedCell.k, i, j, k);
             return;
@@ -273,7 +282,13 @@ class Game {
             this.updateBotStatusUI();
             if (!best) return;
             if (!this.botEnabled || this.isNetworkGame || this.currentPlayer !== color) return;
-            this.makeMove(best.from.x, best.from.y, best.from.z, best.to.x, best.to.y, best.to.z);
+            // Бот всегда превращает пешку в ферзя — сильнейший выбор почти
+            // всегда, и бот не анализирует более редкие превращения в других фигур.
+            const movingFigure = ChessEngine.Pole[best.from.x][best.from.y][best.from.z];
+            const promotion = (movingFigure && movingFigure.Name === 'Pawn' &&
+                ChessEngine.IsPromotionSquare(best.to.z, movingFigure.Color === 'White'))
+                ? 'Queen' : undefined;
+            this.makeMove(best.from.x, best.from.y, best.from.z, best.to.x, best.to.y, best.to.z, promotion);
         };
 
         // Дать UI отрисовать «Бот думает…», затем поиск в Worker
@@ -315,7 +330,21 @@ class Game {
         );
     }
 
-    makeMove(fromX, fromY, fromZ, toX, toY, toZ) {
+    showPromotionModal() {
+        document.getElementById('promotion-modal')?.classList.add('active');
+    }
+
+    // Вызывается кнопками модалки превращения (см. chess.html) после того,
+    // как handleCanvasClick отложил ход в this.pendingPromotionMove.
+    completePromotion(figureType) {
+        document.getElementById('promotion-modal')?.classList.remove('active');
+        if (!this.pendingPromotionMove) return;
+        const { from, to } = this.pendingPromotionMove;
+        this.pendingPromotionMove = null;
+        this.makeMove(from.i, from.j, from.k, to.i, to.j, to.k, figureType);
+    }
+
+    makeMove(fromX, fromY, fromZ, toX, toY, toZ, promotionType) {
         // Сохраняем информацию о ходе для возможной отмены
         const capturedFigure = ChessEngine.Pole[toX][toY][toZ];
         const movedFigureRef = ChessEngine.Pole[fromX][fromY][fromZ];
@@ -332,7 +361,8 @@ class Game {
             fromX, fromY, fromZ,
             toX, toY, toZ,
             ChessEngine.Pole,
-            this.currentPlayer == 'White'
+            this.currentPlayer == 'White',
+            promotionType
         );
 
         if (moveResult.success) {
@@ -340,6 +370,7 @@ class Game {
             moveInfo.castling = moveResult.castling;
             moveInfo.enPassantCapture = moveResult.enPassantCapture;
             moveInfo.previousEnPassantTarget = moveResult.previousEnPassantTarget;
+            moveInfo.promotion = moveResult.promotion;
             if (moveResult.castling) {
                 const { rookTo } = moveResult.castling;
                 moveInfo.rookFigure = ChessEngine.Pole[rookTo.x][rookTo.y][rookTo.z];
@@ -352,7 +383,8 @@ class Game {
                 this.setMyTurn(false);
                 this.networkManager.sendMove({
                     from: { x: fromX, y: fromY, z: fromZ },
-                    to: { x: toX, y: toY, z: toZ }
+                    to: { x: toX, y: toY, z: toZ },
+                    promotion: moveResult.promotion ? moveResult.promotion.figureType : undefined
                 });
             }
             // Обновляем графическое представление
@@ -677,7 +709,8 @@ class Game {
 
                             this.makeMove(
                                 move.from.x, move.from.y, move.from.z,
-                                move.to.x, move.to.y, move.to.z
+                                move.to.x, move.to.y, move.to.z,
+                                move.promotion ? move.promotion.figureType : undefined
                             );
                         }
                     }
@@ -831,7 +864,7 @@ class Game {
 
     makeMoveFromNetwork(move) {
         this.isNetworkMove = true;
-        this.makeMove(move.from.x, move.from.y, move.from.z, move.to.x, move.to.y, move.to.z);
+        this.makeMove(move.from.x, move.from.y, move.from.z, move.to.x, move.to.y, move.to.z, move.promotion);
         this.isNetworkMove = false;
         this.setMyTurn(true);
     }
