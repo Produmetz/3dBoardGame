@@ -133,7 +133,7 @@ const TextureManager = {
         persistAppearance();
     },
     setFigurePreset(name) {
-        this.figureTexture = name ? TextureLibrary.get(name) : null;
+        this.figureTexture = name ? TextureLibrary.get(name, 'figure') : null;
         this.figureTexturePresetName = name || null;
         createAndFillBoardOnPole(ChessEngine.Pole);
         persistAppearance();
@@ -144,7 +144,7 @@ const TextureManager = {
         createAndFillBoardOnPole(ChessEngine.Pole);
     },
     setBackgroundPreset(name) {
-        this.backgroundTexture = name ? TextureLibrary.get(name) : null;
+        this.backgroundTexture = name ? TextureLibrary.get(name, 'background') : null;
         this.backgroundTexturePresetName = name || null;
         scene.background = this.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
         persistAppearance();
@@ -583,11 +583,11 @@ const CustomShapeManager = {
         }
     }
     if (stored.bgTexture) {
-        TextureManager.backgroundTexture = TextureLibrary.get(stored.bgTexture);
+        TextureManager.backgroundTexture = TextureLibrary.get(stored.bgTexture, 'background');
         TextureManager.backgroundTexturePresetName = stored.bgTexture;
     }
     if (stored.figureTexture) {
-        TextureManager.figureTexture = TextureLibrary.get(stored.figureTexture);
+        TextureManager.figureTexture = TextureLibrary.get(stored.figureTexture, 'figure');
         TextureManager.figureTexturePresetName = stored.figureTexture;
     }
     if (stored.figureScale) {
