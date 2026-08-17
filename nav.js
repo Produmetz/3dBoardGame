@@ -1,9 +1,9 @@
 /**
  * Persistent top navigation bar for 3D Chess & Go — identical on every
  * page (including during play), mirroring lichess's flat top bar with
- * a few section links. Игра / Обучение / Инструменты each open a
+ * a few section links. Игра / Задачи / Обучение / Инструменты each open a
  * dropdown on hover once there's more than one destination for that
- * section (Обучение/Инструменты: Шахматы vs Го).
+ * section (Задачи/Обучение/Инструменты: Шахматы vs Го).
  *
  * The "Игра" dropdown mirrors lichess's actual "Игра" menu: it holds
  * things that AREN'T already one click away from the homepage (on
@@ -28,7 +28,9 @@ const Nav = {
         'position-editor': 'tools',
         'position-editor-go': 'tools',
         'figures-tutorial': 'learn',
-        'figures-tutorial-go': 'learn'
+        'figures-tutorial-go': 'learn',
+        'puzzles': 'puzzles',
+        'puzzles-go': 'puzzles'
         // 'checkers': 'play', 'position-editor-checkers': 'tools', ...
     },
 
@@ -37,7 +39,8 @@ const Nav = {
     _subdirPages: [
         'chess', 'go',
         'position-editor', 'position-editor-go',
-        'figures-tutorial', 'figures-tutorial-go'
+        'figures-tutorial', 'figures-tutorial-go',
+        'puzzles', 'puzzles-go'
     ],
 
     // Pages whose canvas fills the exact viewport (sized to
@@ -47,7 +50,8 @@ const Nav = {
     _fullscreenPages: [
         'chess', 'go',
         'position-editor', 'position-editor-go',
-        'figures-tutorial', 'figures-tutorial-go'
+        'figures-tutorial', 'figures-tutorial-go',
+        'puzzles', 'puzzles-go'
     ],
 
     /**
@@ -75,6 +79,11 @@ const Nav = {
 
         html += this._dropdown(activeSection === 'play', 'Игра', `${prefix}index.html`, [
             { id: 'nav-create-game', label: '🌐 Создать запрос на игру', href: '#' }
+        ]);
+
+        html += this._dropdown(activeSection === 'puzzles', 'Задачи', `${prefix}chess/puzzles.html`, [
+            { label: '♞ Шахматы', href: `${prefix}chess/puzzles.html` },
+            { label: '⚫ Го', href: `${prefix}go/puzzles.html` }
         ]);
 
         html += this._dropdown(activeSection === 'learn', 'Обучение', `${prefix}chess/figures-tutorial.html`, [

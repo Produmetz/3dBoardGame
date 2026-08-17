@@ -632,6 +632,7 @@ class GoGame {
 
     updateMoveHistory() {
         const historyList = document.getElementById('history-list');
+        if (!historyList) return; // pages like puzzles.html reuse GoGame without a move-history panel
         historyList.innerHTML = '';
 
         this.moveHistory.forEach((move, index) => {
