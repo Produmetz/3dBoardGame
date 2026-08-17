@@ -225,6 +225,23 @@
         </div>
     </div>
 
+    <!-- Модалка превращения пешки — без неё showPromotionModal() тихо ничего
+         не делает (document.getElementById(...)?.classList — опциональная
+         цепочка глотает отсутствие элемента), а ход так и остаётся отложенным
+         в pendingPromotionMove. Разметка идентична chess.html. -->
+    <div class="modal-overlay" id="promotion-modal">
+        <div class="modal">
+            <h3>Выберите фигуру для превращения</h3>
+            <div class="btn-group" style="flex-direction:column;">
+                <button class="btn btn-primary" style="justify-content:center;" onclick="window.chessGame.completePromotion('Queen')">Ферзь</button>
+                <button class="btn btn-primary" style="justify-content:center;" onclick="window.chessGame.completePromotion('Rook')">Ладья</button>
+                <button class="btn btn-primary" style="justify-content:center;" onclick="window.chessGame.completePromotion('Bishop')">Слон</button>
+                <button class="btn btn-primary" style="justify-content:center;" onclick="window.chessGame.completePromotion('Knight')">Конь</button>
+                <button class="btn btn-primary" style="justify-content:center;" onclick="window.chessGame.completePromotion('Triort')">Триорт</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Подключаем Three.js и OrbitControls из CDN -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>

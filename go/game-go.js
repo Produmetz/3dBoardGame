@@ -214,6 +214,28 @@ class GoGame {
         panel.style.display = this.isNetworkGame ? 'none' : 'block';
     }
 
+    // Только локальный режим — см. комментарий у одноимённого метода в chess/game.js.
+    updateEvaluationPanelVisibility() {
+        const panel = document.getElementById('evaluation-panel');
+        if (!panel) return;
+        panel.style.display = this.isNetworkGame ? 'none' : 'block';
+    }
+
+    evaluatePosition() {
+        if (this.isNetworkGame || !this.board) return;
+        const resultEl = document.getElementById('evaluation-result');
+        if (!resultEl || typeof GoBotCore === 'undefined') return;
+
+        const score = GoBotCore.evaluateQuick(this.board);
+        const rounded = Math.round(score * 100) / 100;
+        const sign = rounded > 0 ? '+' : '';
+        const verdict = rounded > 0.3 ? 'преимущество чёрных'
+            : rounded < -0.3 ? 'преимущество белых'
+            : 'примерное равенство';
+        resultEl.textContent = `${sign}${rounded.toFixed(2)} — ${verdict}`;
+        resultEl.style.color = rounded > 0.3 ? '#4cc9f0' : rounded < -0.3 ? '#ff5722' : '#9bb4d0';
+    }
+
     setBotEnabled(enabled) {
         this.cancelBotSearch();
         this.botEnabled = !!enabled;
@@ -604,6 +626,7 @@ class GoGame {
 
         this.updateMoveHistory();
         this.updateBotPanelVisibility();
+        this.updateEvaluationPanelVisibility();
         this.updateBotStatusUI();
     }
 
@@ -636,6 +659,7 @@ class GoGame {
         this.isNetworkGame = true;
         this.cancelBotSearch();
         this.updateBotPanelVisibility();
+        this.updateEvaluationPanelVisibility();
     }
 
     disconnect() {
@@ -645,6 +669,7 @@ class GoGame {
         this.updateNetworkStatus('Не подключено');
         this.showNetworkConnect();
         this.updateBotPanelVisibility();
+        this.updateEvaluationPanelVisibility();
         this.maybeBotMove();
     }
 
@@ -905,6 +930,7 @@ class GoGame {
         this.isNetworkGame = true;
         this.cancelBotSearch();
         this.updateBotPanelVisibility();
+        this.updateEvaluationPanelVisibility();
         document.getElementById('net-server-address').textContent = serverAddress;
         document.getElementById('net-room-id').textContent = roomId;
         document.getElementById('net-room-name').textContent = roomName || roomId;
@@ -929,6 +955,7 @@ class GoGame {
         document.getElementById('network-panel').style.display = 'none';
         this.isNetworkGame = false;
         this.updateBotPanelVisibility();
+        this.updateEvaluationPanelVisibility();
     }
 
     switchToInRoom() {

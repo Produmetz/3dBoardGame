@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'save-game': () => window.goGame?.saveGame(),
         'load-game': () => document.getElementById('file-input').click(),
         'new-game': () => window.goGame?.resetGame(),
+        'evaluate-position': () => window.goGame?.evaluatePosition(),
         'pass-btn': () => window.goGame?.pass(),
         'undo-move': () => window.goGame?.handleUndoClick(),
         'apply-go-size': () => window.goGame?.resetGame(),

@@ -126,6 +126,18 @@
                 </div>
             </div>
         </div>
+
+        <!-- Оценка позиции движком бота — только локальный режим, в сетевой
+             игре скрывается через updateEvaluationPanelVisibility(). -->
+        <div class="panel-section" id="evaluation-panel">
+            <h3>Оценка позиции</h3>
+            <div class="panel-content">
+                <div class="buttons-row">
+                    <button id="evaluate-position" class="game-btn">Оценить позицию</button>
+                </div>
+                <div id="evaluation-result" style="margin-top:8px; text-align:center; font-weight:bold;"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Модалка настроек: всё, что не нужно прямо во время хода -->

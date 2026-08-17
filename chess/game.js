@@ -222,6 +222,30 @@ class Game {
         panel.style.display = this.isNetworkGame ? 'none' : 'block';
     }
 
+    // Оценка позиции движком бота — только в локальном режиме: в сетевой
+    // игре сервер — единственный источник истины по позиции, а показывать
+    // клиентскую оценку одному игроку было бы нечестным преимуществом.
+    updateEvaluationPanelVisibility() {
+        const panel = document.getElementById('evaluation-panel');
+        if (!panel) return;
+        panel.style.display = this.isNetworkGame ? 'none' : 'block';
+    }
+
+    evaluatePosition() {
+        if (this.isNetworkGame) return;
+        const resultEl = document.getElementById('evaluation-result');
+        if (!resultEl || typeof ChessBotCore === 'undefined') return;
+
+        const score = ChessBotCore.evaluate(ChessEngine.Pole, this.currentPlayer);
+        const rounded = Math.round(score * 100) / 100;
+        const sign = rounded > 0 ? '+' : '';
+        const verdict = rounded > 0.15 ? 'преимущество белых'
+            : rounded < -0.15 ? 'преимущество чёрных'
+            : 'примерное равенство';
+        resultEl.textContent = `${sign}${rounded.toFixed(2)} — ${verdict}`;
+        resultEl.style.color = rounded > 0.15 ? '#4cc9f0' : rounded < -0.15 ? '#ff5722' : '#9bb4d0';
+    }
+
     cancelBotSearch() {
         this._botMoveToken++;
         this.botThinking = false;
@@ -542,6 +566,7 @@ class Game {
         // Обновляем историю ходов
         this.updateMoveHistory();
         this.updateBotPanelVisibility();
+        this.updateEvaluationPanelVisibility();
         this.updateBotStatusUI();
     }
 
@@ -777,6 +802,7 @@ class Game {
         this.isNetworkGame = true;
         this.cancelBotSearch();
         this.updateBotPanelVisibility();
+        this.updateEvaluationPanelVisibility();
     }
 
     disconnect() {
@@ -786,6 +812,7 @@ class Game {
         this.updateNetworkStatus('Не подключено');
         this.showNetworkConnect();
         this.updateBotPanelVisibility();
+        this.updateEvaluationPanelVisibility();
         this.maybeBotMove();
     }
 
@@ -1017,6 +1044,7 @@ class Game {
         this.isNetworkGame = true;
         this.cancelBotSearch();
         this.updateBotPanelVisibility();
+        this.updateEvaluationPanelVisibility();
         document.getElementById('net-server-address').textContent = serverAddress;
         document.getElementById('net-room-id').textContent = roomId;
         document.getElementById('net-room-name').textContent = roomName || roomId;
@@ -1041,6 +1069,7 @@ class Game {
         document.getElementById('network-panel').style.display = 'none';
         this.isNetworkGame = false;
         this.updateBotPanelVisibility();
+        this.updateEvaluationPanelVisibility();
     }
 
     switchToInRoom() {

@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         'cancel-undo': () => window.chessGame?.cancelUndoRequest(),
         'new-game': () => window.chessGame?.resetToStandart(),
+        'evaluate-position': () => window.chessGame?.evaluatePosition(),
         'position-editor': () => {
             window.location.href = 'position-editor.html';
         },
