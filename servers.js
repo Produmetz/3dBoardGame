@@ -15,7 +15,7 @@ class ServerBrowser {
         }
         if (this.servers.length === 0) {
             this.servers = [
-                { name: 'Official Server', url: 'wss://threedboardgames.onrender.com' }
+                { name: 'Official Server', url: 'wss://176.32.33.76.nip.io' }
             ];
             this.saveServers();
         }

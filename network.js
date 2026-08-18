@@ -33,7 +33,7 @@ class NetworkManager {
 
             // Если server пустой или невалидный — используем дефолт
             if (!server || (!server.startsWith('ws://') && !server.startsWith('wss://'))) {
-                server = 'wss://threedboardgames.onrender.com';
+                server = 'wss://176.32.33.76.nip.io';
             }
 
             const token = params.get('token') || '';
