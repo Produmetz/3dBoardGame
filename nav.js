@@ -63,6 +63,7 @@ const Nav = {
 
         this._renderBar(prefix, activeSection);
         this._wireDropdowns(prefix);
+        this._wireBurger();
 
         document.body.classList.add('nav-has-topbar');
         if (this._fullscreenPages.includes(pageKey)) {
@@ -75,7 +76,7 @@ const Nav = {
         bar.className = 'nav-topbar';
         bar.setAttribute('aria-label', 'Основная навигация');
 
-        let html = `<a class="nav-logo" href="${prefix}index.html">3D Chess &amp; Go</a><div class="nav-links">`;
+        let html = `<a class="nav-logo" href="${prefix}index.html">3D Chess &amp; Go</a><div class="nav-links" id="nav-links">`;
 
         html += this._dropdown(activeSection === 'play', 'Игра', `${prefix}index.html`, [
             { id: 'nav-create-game', label: '🌐 Создать запрос на игру', href: '#' }
@@ -97,6 +98,8 @@ const Nav = {
         ]);
 
         html += '</div>';
+
+        html += '<button class="nav-burger" id="nav-burger" aria-label="Открыть меню" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>';
 
         bar.innerHTML = html;
         document.body.insertBefore(bar, document.body.firstChild);
@@ -166,6 +169,44 @@ const Nav = {
                 }
             } catch (err) { /* malformed saved session — fall back to servers.html */ }
             window.location.href = target;
+        });
+    },
+
+    // Burger toggle for the mobile layout (see nav.css @media 768px): the
+    // links row becomes a hidden dropdown panel, opened/closed by tapping
+    // this button instead of laid out inline.
+    _wireBurger() {
+        const bar = document.querySelector('.nav-topbar');
+        const burger = document.getElementById('nav-burger');
+        if (!bar || !burger) return;
+
+        const closeMenu = () => {
+            bar.classList.remove('nav-menu-open');
+            burger.setAttribute('aria-expanded', 'false');
+            // Also fold up any sub-dropdown left open inside the panel, so
+            // reopening the menu later starts from a clean collapsed state.
+            document.querySelectorAll('.nav-has-dropdown.open').forEach(i => i.classList.remove('open'));
+        };
+
+        burger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = bar.classList.toggle('nav-menu-open');
+            burger.setAttribute('aria-expanded', String(isOpen));
+            if (!isOpen) {
+                document.querySelectorAll('.nav-has-dropdown.open').forEach(i => i.classList.remove('open'));
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (bar.classList.contains('nav-menu-open') && !bar.contains(e.target)) {
+                closeMenu();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && bar.classList.contains('nav-menu-open')) {
+                closeMenu();
+            }
         });
     }
 };

@@ -37,6 +37,43 @@
     gap: 1.2rem;
 }
 
+/* Hamburger toggle — hidden on desktop, shown only under the mobile
+   breakpoint below where the links row no longer fits the bar. */
+.nav-burger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    gap: 5px;
+    width: 44px;
+    height: 44px;
+    margin-left: auto;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.nav-burger span {
+    display: block;
+    height: 2px;
+    background: var(--color-text-secondary);
+    border-radius: 2px;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+.nav-topbar.nav-menu-open .nav-burger span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+}
+
+.nav-topbar.nav-menu-open .nav-burger span:nth-child(2) {
+    opacity: 0;
+}
+
+.nav-topbar.nav-menu-open .nav-burger span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
 .nav-link {
     color: var(--color-text-secondary);
     text-decoration: none;
@@ -145,11 +182,60 @@ body.nav-has-topbar.nav-game-page {
         gap: 1rem;
     }
 
+    .nav-burger {
+        display: flex;
+    }
+
+    /* The links row becomes a full-width dropdown panel under the bar,
+       toggled by the burger button instead of laid out inline (that's
+       what was overflowing the bar on phone-width screens). */
     .nav-links {
-        gap: 0.8rem;
+        display: none;
+        position: fixed;
+        top: 44px;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        gap: 0;
+        max-height: calc(100vh - 44px);
+        overflow-y: auto;
+        background: rgba(10, 15, 26, 0.97);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--color-border);
+        box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.5);
+    }
+
+    .nav-topbar.nav-menu-open .nav-links {
+        display: flex;
+    }
+
+    .nav-item {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
     }
 
     .nav-link {
-        font-size: 0.85rem;
+        font-size: 1rem;
+        padding: 0.9rem 1.2rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    /* Dropdown sub-items (e.g. Шахматы/Го) render inline under their
+       parent item instead of as a floating absolute panel — still shown
+       only via .open, toggled by tapping the caret (see nav.js). */
+    .nav-dropdown {
+        position: static;
+        min-width: 0;
+        padding: 0;
+        background: rgba(0, 0, 0, 0.2);
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .nav-dropdown-link {
+        padding: 0.8rem 1.2rem 0.8rem 2.4rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 }
