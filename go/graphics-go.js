@@ -52,6 +52,32 @@ let expandedAxis = null;
 let cubeObjects = [];
 let highlightedCell = null;
 
+// См. подробный комментарий у applyBackgroundFit в chess/graphics.js —
+// логика идентична.
+function applyBackgroundFit() {
+    const texture = TextureManager.backgroundTexture;
+    if (!texture || !texture.image) return;
+    const windowAspect = window.innerWidth / window.innerHeight;
+    const tileCount = texture.userData && texture.userData.bgTileCount;
+    if (tileCount) {
+        if (windowAspect >= 1) {
+            texture.repeat.set(tileCount * windowAspect, tileCount);
+        } else {
+            texture.repeat.set(tileCount, tileCount / windowAspect);
+        }
+        texture.offset.set(0, 0);
+    } else {
+        const imageAspect = (texture.image.width || 1) / (texture.image.height || 1);
+        if (windowAspect > imageAspect) {
+            texture.repeat.set(1, imageAspect / windowAspect);
+            texture.offset.set(0, (1 - imageAspect / windowAspect) / 2);
+        } else {
+            texture.repeat.set(windowAspect / imageAspect, 1);
+            texture.offset.set((1 - windowAspect / imageAspect) / 2, 0);
+        }
+    }
+}
+
 const ColorManager = {
     colors: {
         backgroundColor: 0xFFFFFF,
@@ -73,6 +99,7 @@ const ColorManager = {
             }
         }
         scene.background = TextureManager.backgroundTexture || new THREE.Color(this.colors.backgroundColor);
+        applyBackgroundFit();
         // Перерисовка доски должна быть вызвана отдельно, т.к. нужна актуальная доска
         if (window.goGame && window.goGame.board) {
             redrawBoardWithNewColors(window.goGame.board);
@@ -112,12 +139,14 @@ const TextureManager = {
         this.backgroundTexture = name ? TextureLibrary.get(name, 'background') : null;
         this.backgroundTexturePresetName = name || null;
         scene.background = this.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
+        applyBackgroundFit();
         persistAppearance();
     },
     async setBackgroundCustom(file) {
         this.backgroundTexture = await TextureLibrary.fromFile(file);
         this.backgroundTexturePresetName = null;
         scene.background = this.backgroundTexture;
+        applyBackgroundFit();
     }
 };
 
@@ -205,6 +234,7 @@ function persistAppearance() {
     }
 
     scene.background = TextureManager.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
+    applyBackgroundFit();
 })();
 
 const raycaster = new THREE.Raycaster();
@@ -419,6 +449,7 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     canvas.style.width = '100%';
     canvas.style.height = '100%';
+    applyBackgroundFit();
 }
 
 function flashCellInvalid(i, j, k) {

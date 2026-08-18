@@ -75,6 +75,42 @@ let maybeMoveColor = 0x47FF4B;
 let dangerKingColor = 0xFF0000;
 let selectedCellColor = 0xFF9500;*/
 
+// scene.background растягивает Texture на весь экран через её собственные
+// UV [0,1] БЕЗ поправки на соотношение сторон — квадратный canvas (все наши
+// процедурные текстуры именно такие) на широком экране выходит растянутым
+// по горизонтали (круг превращается в эллипс, и это относится к любой
+// текстуре фона: и пресетам, и своей загруженной картинке). Вызывается
+// после каждого scene.background = <текстура> и при ресайзе окна.
+function applyBackgroundFit() {
+    const texture = TextureManager.backgroundTexture;
+    if (!texture || !texture.image) return;
+    const windowAspect = window.innerWidth / window.innerHeight;
+    const tileCount = texture.userData && texture.userData.bgTileCount;
+    if (tileCount) {
+        // Плиточные узоры (мрамор/дерево/сетка) — мостим квадратными
+        // плитками: repeat.x/y подобраны так, чтобы каждая плитка на экране
+        // была квадратной независимо от соотношения сторон окна.
+        if (windowAspect >= 1) {
+            texture.repeat.set(tileCount * windowAspect, tileCount);
+        } else {
+            texture.repeat.set(tileCount, tileCount / windowAspect);
+        }
+        texture.offset.set(0, 0);
+    } else {
+        // Остальные (звёзды/градиент/своя картинка) — "cover": заполняем
+        // экран без искажений, обрезая лишнее по одной из осей, как
+        // background-size: cover в CSS.
+        const imageAspect = (texture.image.width || 1) / (texture.image.height || 1);
+        if (windowAspect > imageAspect) {
+            texture.repeat.set(1, imageAspect / windowAspect);
+            texture.offset.set(0, (1 - imageAspect / windowAspect) / 2);
+        } else {
+            texture.repeat.set(windowAspect / imageAspect, 1);
+            texture.offset.set((1 - windowAspect / imageAspect) / 2, 0);
+        }
+    }
+}
+
 const ColorManager = {
     // Цвета по умолчанию
     colors: {
@@ -106,6 +142,7 @@ const ColorManager = {
         // перекрывает (TextureManager.setBackgroundPreset/Custom сами
         // выставляют scene.background и это единственный способ его сбросить).
         scene.background = TextureManager.backgroundTexture || new THREE.Color(this.colors.backgroundColor);
+        applyBackgroundFit();
 
         // Перерисовываем доску с новыми цветами
         redrawBoardWithNewColors();
@@ -147,12 +184,14 @@ const TextureManager = {
         this.backgroundTexture = name ? TextureLibrary.get(name, 'background') : null;
         this.backgroundTexturePresetName = name || null;
         scene.background = this.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
+        applyBackgroundFit();
         persistAppearance();
     },
     async setBackgroundCustom(file) {
         this.backgroundTexture = await TextureLibrary.fromFile(file);
         this.backgroundTexturePresetName = null;
         scene.background = this.backgroundTexture;
+        applyBackgroundFit();
     },
     async setShapeSet(name) {
         if (!SHAPE_SETS[name]) return;
@@ -635,6 +674,7 @@ const CustomShapeManager = {
     }
 
     scene.background = TextureManager.backgroundTexture || new THREE.Color(ColorManager.colors.backgroundColor);
+    applyBackgroundFit();
 })();
 
 // Функция для создания случайной фигуры (запасная)
@@ -975,6 +1015,8 @@ function onWindowResize() {
     // Обновляем размеры canvas
     canvas.style.width = '100%';
     canvas.style.height = '100%';
+
+    applyBackgroundFit();
 }
 
 // Анимация
