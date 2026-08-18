@@ -442,13 +442,22 @@ canvas {
         order: 2;
     }
 
+    /* Edge tab instead of a bottom-row button: the bottom row already
+       belongs to .axis-toolbar, which alone can span most of a phone's
+       width (4 buttons at the min-width below), so any button placed
+       next to it there gets squeezed into an overlap. Docking this one
+       to the right edge, vertically centered, keeps it clear of that row
+       at any phone width and reads as a pull-tab for the panel "shutter". */
     #toggle-panels {
         position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
+        top: 50%;
+        right: 0;
+        transform: translateY(-50%);
         z-index: 10;
         margin: 0;
+        min-width: 0;
+        padding: 16px 10px;
+        border-radius: var(--radius-sm) 0 0 var(--radius-sm);
     }
 
     /* Стили секций: полупрозрачный фон с размытием для лучшей читаемости на фоне доски */
