@@ -60,10 +60,12 @@ const Nav = {
     init(pageKey) {
         const activeSection = this.pages.hasOwnProperty(pageKey) ? this.pages[pageKey] : null;
         const prefix = this._subdirPages.includes(pageKey) ? '../' : '';
+        this._currentPageKey = pageKey;
 
         this._renderBar(prefix, activeSection);
         this._wireDropdowns(prefix);
         this._wireBurger();
+        this._wireSettingsButton();
 
         document.body.classList.add('nav-has-topbar');
         if (this._fullscreenPages.includes(pageKey)) {
@@ -99,10 +101,50 @@ const Nav = {
 
         html += '</div>';
 
+        html += this._renderRight(prefix);
+
         html += '<button class="nav-burger" id="nav-burger" aria-label="Открыть меню" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>';
 
         bar.innerHTML = html;
         document.body.insertBefore(bar, document.body.firstChild);
+    },
+
+    // Right-side icon group, mirroring lichess's persistent top-right area
+    // (there: search/tools/notifications/account). We only have an
+    // account state and a per-page settings panel to surface, so that's
+    // what shows up here — always visible regardless of the burger menu
+    // state, so neither is ever trapped behind a collapsed panel.
+    _renderRight(prefix) {
+        let html = '<div class="nav-right">';
+
+        const auth = this._readAuth();
+        const label = auth ? auth.nickname : 'Войти';
+        const title = auth ? `Вы вошли как ${auth.nickname}` : 'Войти на сервер';
+        html += `<a class="nav-account-link" href="${prefix}servers.html" title="${title}">`
+            + '<span class="nav-account-icon">👤</span>'
+            + `<span class="nav-account-name">${label}</span>`
+            + '</a>';
+
+        // Only the pages that actually render a #settings-modal (see
+        // _fullscreenPages) have anything for this button to open.
+        if (this._fullscreenPages.includes(this._currentPageKey)) {
+            html += '<button class="nav-icon-btn" id="nav-settings-btn" title="Настройки" aria-label="Настройки">⚙</button>';
+        }
+
+        html += '</div>';
+        return html;
+    },
+
+    // Best-effort read of the saved server session (set by servers.html on
+    // login/register/guest-join). Absent or malformed just means "signed
+    // out" — never worth failing navigation rendering over.
+    _readAuth() {
+        try {
+            const auth = JSON.parse(localStorage.getItem('lobby_auth') || 'null');
+            return (auth && auth.nickname) ? auth : null;
+        } catch (err) {
+            return null;
+        }
     },
 
     // Builds one "<label> ▾" nav item with a hover dropdown. `items` may
@@ -207,6 +249,16 @@ const Nav = {
             if (e.key === 'Escape' && bar.classList.contains('nav-menu-open')) {
                 closeMenu();
             }
+        });
+    },
+
+    // The settings button now lives in the persistent top bar instead of
+    // inside #game-panel — it used to be an in-panel button, which meant
+    // toggling the panel off (mobile "hide interface" control) hid the
+    // only way to reopen settings along with it.
+    _wireSettingsButton() {
+        document.getElementById('nav-settings-btn')?.addEventListener('click', () => {
+            document.getElementById('settings-modal')?.classList.add('active');
         });
     }
 };

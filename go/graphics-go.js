@@ -83,6 +83,49 @@ TextureLibrary.onPhotoLoaded = function (texture) {
     if (TextureManager.backgroundTexture === texture) applyBackgroundFit();
 };
 
+// Геометрии и форма камня — объявлены здесь (а не рядом с cellGeometry ниже,
+// где стояли бы по смыслу) потому что restoreStoredAppearance() ссылается на
+// STONE_SHAPES, а исполняется как IIFE сразу при загрузке скрипта: в JS
+// const в TDZ до объявления, так что этот блок обязан идти раньше того IIFE.
+// Форма камня — одна на весь комплект (в отличие от шахмат, у камней Го нет
+// разных типов фигур, так что вместо SHAPE_SETS с маппингом по типу здесь
+// просто выбор одной геометрии). "lens" сплющена по Y при отрисовке
+// (см. createStone) — приближает силуэт к настоящему го-камню.
+const stoneGeometry = new THREE.SphereGeometry(0.45, 20, 20);
+const stoneLensGeometry = new THREE.SphereGeometry(0.5, 24, 24);
+const stoneCubeGeometry = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+const stoneCylinderGeometry = new THREE.CylinderGeometry(0.42, 0.42, 0.5, 24);
+const stoneConeGeometry = new THREE.ConeGeometry(0.42, 0.85, 24);
+const stoneOctahedronGeometry = new THREE.OctahedronGeometry(0.5);
+
+const STONE_SHAPES = {
+    sphere: { geometry: stoneGeometry },
+    lens: { geometry: stoneLensGeometry, scaleY: 0.55 },
+    cube: { geometry: stoneCubeGeometry },
+    cylinder: { geometry: stoneCylinderGeometry },
+    cone: { geometry: stoneConeGeometry },
+    octahedron: { geometry: stoneOctahedronGeometry }
+};
+const STONE_SHAPE_LABELS = {
+    sphere: 'Сфера', lens: 'Линза', cube: 'Куб',
+    cylinder: 'Цилиндр', cone: 'Конус', octahedron: 'Октаэдр'
+};
+
+function createStone(color, scale) {
+    const shape = STONE_SHAPES[TextureManager.stoneShape] || STONE_SHAPES.sphere;
+    const material = new THREE.MeshPhongMaterial({
+        color: color,
+        map: TextureManager.figureTexture,
+        shininess: 800 * MaterialSettings.figureGloss,
+        specular: 0xFFFFFF,
+        emissive: 0x000011,
+        emissiveIntensity: 0.1
+    });
+    const mesh = new THREE.Mesh(shape.geometry, material);
+    mesh.scale.set(scale, scale * (shape.scaleY || 1), scale);
+    return mesh;
+}
+
 const ColorManager = {
     colors: {
         backgroundColor: 0xFFFFFF,
@@ -114,18 +157,26 @@ const ColorManager = {
 };
 
 // Текстуры фона/камней — см. подробный комментарий в chess/graphics.js,
-// логика та же. У камней Го нет разных типов фигур, так что набора форм
-// здесь нет — только текстура.
+// логика та же. У камней Го нет разных типов фигур (как Pawn/Rook в
+// шахматах), так что форма камня — одна настройка на весь комплект, а не
+// набор с маппингом по типу (см. STONE_SHAPES выше).
 const TextureManager = {
     figureTexture: null,
     figureTexturePresetName: null,
     backgroundTexture: null,
     backgroundTexturePresetName: null,
     figureScale: 1,
+    stoneShape: 'sphere',
 
     setFigureScale(value) {
         const n = parseFloat(value);
         this.figureScale = Number.isFinite(n) ? Math.min(1.6, Math.max(0.5, n)) : 1;
+        if (window.goGame && window.goGame.board) createAndFillBoardForGo(window.goGame.board);
+        persistAppearance();
+    },
+    setStoneShape(name) {
+        if (!STONE_SHAPES[name]) return;
+        this.stoneShape = name;
         if (window.goGame && window.goGame.board) createAndFillBoardForGo(window.goGame.board);
         persistAppearance();
     },
@@ -197,6 +248,7 @@ function persistAppearance() {
         bgTexture: TextureManager.backgroundTexturePresetName,
         figureTexture: TextureManager.figureTexturePresetName,
         figureScale: TextureManager.figureScale,
+        stoneShape: TextureManager.stoneShape,
         cellOpacity: MaterialSettings.cellOpacity,
         cellShininess: MaterialSettings.cellShininess,
         figureGloss: MaterialSettings.figureGloss,
@@ -224,6 +276,9 @@ function persistAppearance() {
     if (stored.figureScale) {
         TextureManager.figureScale = stored.figureScale;
     }
+    if (stored.stoneShape && STONE_SHAPES[stored.stoneShape]) {
+        TextureManager.stoneShape = stored.stoneShape;
+    }
     if (stored.cellOpacity !== undefined) {
         MaterialSettings.cellOpacity = stored.cellOpacity;
     }
@@ -245,25 +300,14 @@ function persistAppearance() {
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-// Общие геометрии — см. пояснение в chess/graphics.js. Здесь особенно важно:
-// createAndFillBoardForGo пересоздаёт ВСЮ доску (до 1000 клеток) после каждого
-// хода, так что переиспользование геометрии и очистка материалов старых мешей
-// (см. clearBoard) экономят как GPU-память, так и время на каждом ходу.
+// Общие геометрии клеток — см. пояснение в chess/graphics.js. Здесь особенно
+// важно: createAndFillBoardForGo пересоздаёт ВСЮ доску (до 1000 клеток) после
+// каждого хода, так что переиспользование геометрии и очистка материалов
+// старых мешей (см. clearBoard) экономят как GPU-память, так и время на
+// каждом ходу. Геометрии камней объявлены раньше в файле (см. STONE_SHAPES) —
+// restoreStoredAppearance() ссылается на них, а исполняется как IIFE сразу
+// при загрузке скрипта, до этой точки файла.
 const cellGeometry = new THREE.BoxGeometry(1.5, 1.5, 1.5);
-const stoneGeometry = new THREE.SphereGeometry(0.45, 20, 20);
-
-function createSphere(color) {
-    const geometry = stoneGeometry;
-    const material = new THREE.MeshPhongMaterial({
-        color: color,
-        map: TextureManager.figureTexture,
-        shininess: 800 * MaterialSettings.figureGloss,
-        specular: 0xFFFFFF,
-        emissive: 0x000011,
-        emissiveIntensity: 0.1
-    });
-    return new THREE.Mesh(geometry, material);
-}
 
 function createCellOfBoard(x, y, z, i, j, k) {
     const isEvenPosition = (i + j + k) % 2 === 0;
@@ -342,16 +386,14 @@ function createAndFillBoardForGo(board, deadStoneKeys) {
 
                 if (stone !== GoEngine.Stone.EMPTY) {
                     const color = stone === GoEngine.Stone.WHITE ? ColorManager.colors.whiteFigureColor : ColorManager.colors.blackFigureColor;
-                    const sphere = createSphere(color);
                     const isDead = deadStoneKeys && deadStoneKeys.has(`${x},${y},${z}`);
+                    const baseScale = (isDead ? 0.5 : 0.7) * TextureManager.figureScale;
+                    const stoneMesh = createStone(color, baseScale);
                     if (isDead) {
-                        sphere.scale.setScalar(0.5 * TextureManager.figureScale);
-                        sphere.material.transparent = true;
-                        sphere.material.opacity = 0.35;
-                    } else {
-                        sphere.scale.setScalar(0.7 * TextureManager.figureScale);
+                        stoneMesh.material.transparent = true;
+                        stoneMesh.material.opacity = 0.35;
                     }
-                    cell.add(sphere);
+                    cell.add(stoneMesh);
                 }
             }
         }
@@ -492,6 +534,9 @@ window.GraphicsEngine = {
     backgroundTexturePresets: TextureLibrary.backgroundPresets,
     setFigureScale: (value) => TextureManager.setFigureScale(value),
     getFigureScale: () => TextureManager.figureScale,
+    setStoneShape: (name) => TextureManager.setStoneShape(name),
+    getStoneShape: () => TextureManager.stoneShape,
+    stoneShapes: STONE_SHAPE_LABELS,
     setCellOpacity: (value) => MaterialSettings.setCellOpacity(value),
     getCellOpacity: () => MaterialSettings.cellOpacity,
     setCellShininess: (value) => MaterialSettings.setCellShininess(value),
@@ -513,6 +558,7 @@ window.GraphicsEngine = {
         setVal('bg-texture', TextureManager.backgroundTexturePresetName || '');
         setVal('figure-texture', TextureManager.figureTexturePresetName || '');
         setVal('figure-scale', TextureManager.figureScale);
+        setVal('stone-shape', TextureManager.stoneShape);
         setVal('cell-opacity', MaterialSettings.cellOpacity);
         setVal('cell-shininess', MaterialSettings.cellShininess);
         setVal('figure-gloss', MaterialSettings.figureGloss);

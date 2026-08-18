@@ -47,7 +47,6 @@
     gap: 5px;
     width: 44px;
     height: 44px;
-    margin-left: auto;
     padding: 0;
     background: transparent;
     border: none;
@@ -72,6 +71,65 @@
 
 .nav-topbar.nav-menu-open .nav-burger span:nth-child(3) {
     transform: translateY(-7px) rotate(-45deg);
+}
+
+/* Right-side icon group — account state and (on pages that have one) the
+   settings trigger. Mirrors lichess's persistent top-right area, and
+   pushes itself (plus the burger, which follows it in the DOM) to the
+   far edge of the bar via the auto margin below. Always visible
+   regardless of burger-menu state, so neither icon is ever trapped
+   behind the collapsible links panel or a hidden game panel. */
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-left: auto;
+}
+
+.nav-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s;
+}
+
+.nav-icon-btn:hover {
+    color: var(--color-text);
+    background: var(--color-surface-raised);
+}
+
+.nav-account-link {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    white-space: nowrap;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.nav-account-link:hover {
+    color: var(--color-text);
+    border-color: var(--color-accent);
+}
+
+.nav-account-name {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .nav-link {
@@ -184,6 +242,27 @@ body.nav-has-topbar.nav-game-page {
 
     .nav-burger {
         display: flex;
+    }
+
+    /* Keep the right-side icons compact so logo + account + settings +
+       burger all fit on a single row even on the narrowest phones. */
+    .nav-right {
+        gap: 0.3rem;
+    }
+
+    .nav-account-name {
+        display: none;
+    }
+
+    .nav-account-link {
+        padding: 0.4rem;
+        border: none;
+    }
+
+    .nav-icon-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1.1rem;
     }
 
     /* The links row becomes a full-width dropdown panel under the bar,

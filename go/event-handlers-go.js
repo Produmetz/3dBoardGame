@@ -97,89 +97,9 @@ document.addEventListener('DOMContentLoaded', function () {
         window.goGame?.loadGame(e.target.files[0]);
     });
 
-    const colorPickers = {
-        'bg-color': (value) => window.goGame?.changeColor('background', value),
-        'board-color-1': (value) => window.goGame?.changeColor('board1', value),
-        'board-color-2': (value) => window.goGame?.changeColor('board2', value),
-        'white-figures-color': (value) => window.goGame?.changeColor('whiteFigure', value),
-        'black-figures-color': (value) => window.goGame?.changeColor('blackFigure', value)
-    };
-
-    Object.keys(colorPickers).forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.addEventListener('input', (e) => colorPickers[id](e.target.value));
-        }
-    });
-
-    // Текстуры фона/камней — см. подробный комментарий в chess/event-handlers.js.
-    // У Го нет разных форм фигур (камни всегда сферы), так что набора форм тут нет.
-    function populatePresetSelect(selectId, presets) {
-        const select = document.getElementById(selectId);
-        if (!select || !presets) return;
-        Object.entries(presets).forEach(([key, label]) => {
-            const opt = document.createElement('option');
-            opt.value = key;
-            opt.textContent = label;
-            select.insertBefore(opt, select.lastElementChild); // перед "Своя картинка…"
-        });
-    }
-    populatePresetSelect('bg-texture', GraphicsEngine.backgroundTexturePresets);
-    populatePresetSelect('figure-texture', GraphicsEngine.figureTexturePresets);
-
-    document.getElementById('bg-texture')?.addEventListener('change', (e) => {
-        if (e.target.value === 'custom') {
-            document.getElementById('bg-texture-file')?.click();
-        } else {
-            GraphicsEngine.setBackgroundTexturePreset(e.target.value || null);
-        }
-    });
-    document.getElementById('bg-texture-file')?.addEventListener('change', (e) => {
-        if (e.target.files[0]) GraphicsEngine.setBackgroundTextureCustom(e.target.files[0]);
-    });
-
-    document.getElementById('figure-texture')?.addEventListener('change', (e) => {
-        if (e.target.value === 'custom') {
-            document.getElementById('figure-texture-file')?.click();
-        } else {
-            GraphicsEngine.setFigureTexturePreset(e.target.value || null);
-        }
-    });
-    document.getElementById('figure-texture-file')?.addEventListener('change', (e) => {
-        if (e.target.files[0]) GraphicsEngine.setFigureTextureCustom(e.target.files[0]);
-    });
-
-    const figureScaleInput = document.getElementById('figure-scale');
-    const figureScaleValue = document.getElementById('figure-scale-value');
-    figureScaleInput?.addEventListener('input', (e) => {
-        if (figureScaleValue) figureScaleValue.textContent = parseFloat(e.target.value).toFixed(2);
-        GraphicsEngine.setFigureScale(e.target.value);
-    });
-
-    // См. комментарий у аналогичных ползунков в chess/event-handlers.js.
-    const materialSliders = [
-        ['cell-opacity', 'setCellOpacity', 2],
-        ['cell-shininess', 'setCellShininess', 0],
-        ['figure-gloss', 'setFigureGloss', 2],
-        ['light-intensity', 'setLightIntensity', 2]
-    ];
-    materialSliders.forEach(([id, setter, decimals]) => {
-        const input = document.getElementById(id);
-        const label = document.getElementById(id + '-value');
-        input?.addEventListener('input', (e) => {
-            if (label) label.textContent = parseFloat(e.target.value).toFixed(decimals);
-            GraphicsEngine[setter](e.target.value);
-        });
-    });
-
-    // См. комментарий у аналогичного вызова в chess/event-handlers.js.
-    GraphicsEngine.syncAppearanceUI();
-    if (figureScaleValue && figureScaleInput) figureScaleValue.textContent = parseFloat(figureScaleInput.value).toFixed(2);
-    materialSliders.forEach(([id, , decimals]) => {
-        const input = document.getElementById(id);
-        const label = document.getElementById(id + '-value');
-        if (input && label) label.textContent = parseFloat(input.value).toFixed(decimals);
-    });
+    // Отображение/текстуры/освещение — общая логика для всех 8 страниц
+    // (шахматы и Го × игра/задачи/редактор/обучение), см. ../appearance-ui.js.
+    wireAppearanceSettingsUI();
 
     document.getElementById('chat-input')?.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
@@ -226,9 +146,6 @@ document.getElementById('toggle-panels').addEventListener('click', () => {
     document.getElementById('game-panel')?.classList.toggle('hidden');
 });
 
-document.getElementById('open-settings')?.addEventListener('click', () => {
-    document.getElementById('settings-modal').classList.add('active');
-});
 document.getElementById('close-settings')?.addEventListener('click', () => {
     document.getElementById('settings-modal').classList.remove('active');
 });

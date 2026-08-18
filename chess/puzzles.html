@@ -23,10 +23,6 @@
     </div>
 
     <div class="game-panel" id="game-panel">
-        <div class="buttons-row">
-            <button id="open-settings" class="game-btn" title="Настройки">⚙</button>
-        </div>
-
         <div id="game-info" class="panel-section">
             <h3>Текущая игра</h3>
             <div class="panel-content">
@@ -91,6 +87,106 @@
             </div>
 
             <div class="sub-section collapsed">
+                <h4>Текстуры и форма фигур</h4>
+                <div class="sub-content">
+                    <div class="color-input-container">
+                        <label for="bg-texture">Текстура фона:</label>
+                        <select id="bg-texture" class="game-btn" style="width:auto; padding:4px 8px;">
+                            <option value="">Нет (цвет)</option>
+                            <option value="custom">Своя картинка…</option>
+                        </select>
+                    </div>
+                    <input type="file" id="bg-texture-file" accept="image/*" style="display:none;">
+
+                    <div class="color-input-container" style="margin-top:8px;">
+                        <label for="figure-texture">Текстура фигур:</label>
+                        <select id="figure-texture" class="game-btn" style="width:auto; padding:4px 8px;">
+                            <option value="">Нет (цвет)</option>
+                            <option value="custom">Своя картинка…</option>
+                        </select>
+                    </div>
+                    <input type="file" id="figure-texture-file" accept="image/*" style="display:none;">
+
+                    <div class="color-input-container" style="margin-top:8px;">
+                        <label for="shape-set">Форма фигур:</label>
+                        <select id="shape-set" class="game-btn" style="width:auto; padding:4px 8px;"></select>
+                    </div>
+
+                    <!-- Показывается только когда "Форма фигур" = "Свои формы" -->
+                    <div id="custom-shapes-panel" style="display:none; margin-top:10px;">
+                        <p style="color: var(--color-text-secondary); font-size:0.85em; margin-bottom:8px;">
+                            Загрузите модель (.glb/.gltf) для нужных фигур — для остальных используется форма «По умолчанию». Не сохраняется между страницами и перезагрузкой.
+                        </p>
+                        <div class="color-input-container">
+                            <label for="custom-shape-Pawn">Пешка:</label>
+                            <input type="file" id="custom-shape-Pawn" accept=".glb,.gltf" data-piece="Pawn">
+                        </div>
+                        <div class="color-input-container" style="margin-top:6px;">
+                            <label for="custom-shape-Rook">Ладья:</label>
+                            <input type="file" id="custom-shape-Rook" accept=".glb,.gltf" data-piece="Rook">
+                        </div>
+                        <div class="color-input-container" style="margin-top:6px;">
+                            <label for="custom-shape-Knight">Конь:</label>
+                            <input type="file" id="custom-shape-Knight" accept=".glb,.gltf" data-piece="Knight">
+                        </div>
+                        <div class="color-input-container" style="margin-top:6px;">
+                            <label for="custom-shape-Bishop">Слон:</label>
+                            <input type="file" id="custom-shape-Bishop" accept=".glb,.gltf" data-piece="Bishop">
+                        </div>
+                        <div class="color-input-container" style="margin-top:6px;">
+                            <label for="custom-shape-Triort">Триорт:</label>
+                            <input type="file" id="custom-shape-Triort" accept=".glb,.gltf" data-piece="Triort">
+                        </div>
+                        <div class="color-input-container" style="margin-top:6px;">
+                            <label for="custom-shape-Queen">Ферзь:</label>
+                            <input type="file" id="custom-shape-Queen" accept=".glb,.gltf" data-piece="Queen">
+                        </div>
+                        <div class="color-input-container" style="margin-top:6px;">
+                            <label for="custom-shape-King">Король:</label>
+                            <input type="file" id="custom-shape-King" accept=".glb,.gltf" data-piece="King">
+                        </div>
+                    </div>
+
+                    <div class="color-input-container" style="margin-top:8px;">
+                        <label for="figure-scale">Размер фигур: <span id="figure-scale-value">1.0</span></label>
+                        <input type="range" id="figure-scale" min="0.5" max="1.6" step="0.05" value="1">
+                    </div>
+
+                    <div class="color-input-container" style="margin-top:8px;">
+                        <label for="move-speed">Анимация хода:</label>
+                        <select id="move-speed" class="game-btn" style="width:auto; padding:4px 8px;">
+                            <option value="0">Мгновенно</option>
+                            <option value="150">Быстро</option>
+                            <option value="350">Средне</option>
+                            <option value="600">Медленно</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sub-section collapsed">
+                <h4>Освещение и материалы</h4>
+                <div class="sub-content">
+                    <div class="color-input-container">
+                        <label for="cell-opacity">Прозрачность клеток: <span id="cell-opacity-value">0.30</span></label>
+                        <input type="range" id="cell-opacity" min="0.05" max="1" step="0.05" value="0.3">
+                    </div>
+                    <div class="color-input-container" style="margin-top:8px;">
+                        <label for="cell-shininess">Блеск клеток: <span id="cell-shininess-value">80</span></label>
+                        <input type="range" id="cell-shininess" min="0" max="200" step="5" value="80">
+                    </div>
+                    <div class="color-input-container" style="margin-top:8px;">
+                        <label for="figure-gloss">Блеск фигур: <span id="figure-gloss-value">1.0</span></label>
+                        <input type="range" id="figure-gloss" min="0.1" max="2" step="0.1" value="1">
+                    </div>
+                    <div class="color-input-container" style="margin-top:8px;">
+                        <label for="light-intensity">Яркость освещения: <span id="light-intensity-value">1.0</span></label>
+                        <input type="range" id="light-intensity" min="0.2" max="2" step="0.1" value="1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="sub-section collapsed">
                 <h4>Справка</h4>
                 <div class="sub-content">
                     <p>• Найдите ход (или несколько ходов подряд), решающий задачу — так, как обычно ходите в игре</p>
@@ -131,6 +227,7 @@
     <script src="../appearance.js"></script>
     <script src="../textures.js"></script>
     <script src="graphics.js"></script>
+    <script src="../appearance-ui.js"></script>
     <script src="game.js"></script>
     <script src="../network.js"></script>
     <script src="../puzzles.js"></script>
@@ -169,9 +266,6 @@
                 document.getElementById('game-panel')?.classList.toggle('hidden');
             });
 
-            document.getElementById('open-settings').addEventListener('click', () => {
-                document.getElementById('settings-modal').classList.add('active');
-            });
             document.getElementById('close-settings').addEventListener('click', () => {
                 document.getElementById('settings-modal').classList.remove('active');
             });
@@ -187,20 +281,9 @@
                 });
             });
 
-            const colorPickers = {
-                'bg-color': (value) => window.chessGame?.changeColor('background', value),
-                'board-color-1': (value) => window.chessGame?.changeColor('board1', value),
-                'board-color-2': (value) => window.chessGame?.changeColor('board2', value),
-                'white-figures-color': (value) => window.chessGame?.changeColor('whiteFigure', value),
-                'black-figures-color': (value) => window.chessGame?.changeColor('blackFigure', value)
-            };
-            Object.keys(colorPickers).forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.addEventListener('input', (e) => colorPickers[id](e.target.value));
-                }
-            });
-            GraphicsEngine.syncAppearanceUI();
+            // Отображение/текстуры/освещение — общая логика для всех 8 страниц
+            // (шахматы и Го × игра/задачи/редактор/обучение), см. ../appearance-ui.js.
+            wireAppearanceSettingsUI();
 
             canvas.addEventListener('contextmenu', (e) => {
                 e.preventDefault();

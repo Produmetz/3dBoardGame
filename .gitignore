@@ -16,6 +16,7 @@
 !puzzles.js
 !textures.js
 !appearance.js
+!appearance-ui.js
 !lobby.html
 !lobby.js
 !lobby-styles.css

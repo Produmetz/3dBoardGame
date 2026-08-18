@@ -25,13 +25,10 @@
     </div>
 
     <!-- Единая игровая панель: статус, история ходов, действия -->
+    <!-- Настройки (цвета, файлы, размер поля) теперь открываются кнопкой ⚙
+         в верхней навигации (nav.js), а не отсюда — так она всегда видна,
+         даже когда эта панель свёрнута кнопкой toggle-panels на мобильном. -->
     <div class="game-panel" id="game-panel">
-        <div class="buttons-row">
-            <!-- Настройки (цвета, файлы, размер поля) — спрятаны за одной кнопкой.
-                 Переход между Шахматы/Го/Онлайн теперь в верхней навигации (nav.js). -->
-            <button id="open-settings" class="game-btn" title="Настройки">⚙</button>
-        </div>
-
         <div id="game-info" class="panel-section">
             <h3>Текущая игра</h3>
             <div class="panel-content">
@@ -198,6 +195,11 @@
                         <label for="figure-scale">Размер камней: <span id="figure-scale-value">1.0</span></label>
                         <input type="range" id="figure-scale" min="0.5" max="1.6" step="0.05" value="1">
                     </div>
+
+                    <div class="color-input-container" style="margin-top:8px;">
+                        <label for="stone-shape">Форма камней:</label>
+                        <select id="stone-shape" class="game-btn" style="width:auto; padding:4px 8px;"></select>
+                    </div>
                 </div>
             </div>
 
@@ -314,6 +316,7 @@
     <script src="../appearance.js"></script>
     <script src="../textures.js"></script>
     <script src="graphics-go.js"></script>
+    <script src="../appearance-ui.js"></script>
     <script src="../network.js"></script>
     <script src="game-go.js"></script>
     <script src="event-handlers-go.js"></script>

@@ -25,13 +25,10 @@
     </div>
 
     <!-- Единая игровая панель: статус, история ходов, действия -->
+    <!-- Настройки (цвета, файлы, инструменты) теперь открываются кнопкой ⚙
+         в верхней навигации (nav.js), а не отсюда — так она всегда видна,
+         даже когда эта панель свёрнута кнопкой toggle-panels на мобильном. -->
     <div class="game-panel" id="game-panel">
-        <div class="buttons-row">
-            <!-- Настройки (цвета, файлы, инструменты) — спрятаны за одной кнопкой.
-                 Переход между Шахматы/Го/Онлайн теперь в верхней навигации (nav.js). -->
-            <button id="open-settings" class="game-btn" title="Настройки">⚙</button>
-        </div>
-
         <div id="game-info" class="panel-section">
             <h3>Текущая игра</h3>
             <div class="panel-content">
@@ -358,6 +355,7 @@
     <script src="../appearance.js"></script>
     <script src="../textures.js"></script>
     <script src="graphics.js"></script>
+    <script src="../appearance-ui.js"></script>
     <script src="../network.js"></script>
     <script src="game.js"></script>
     <script src="event-handlers.js"></script>
