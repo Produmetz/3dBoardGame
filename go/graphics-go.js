@@ -78,6 +78,11 @@ function applyBackgroundFit() {
     }
 }
 
+// См. подробный комментарий у TextureLibrary.onPhotoLoaded в chess/graphics.js.
+TextureLibrary.onPhotoLoaded = function (texture) {
+    if (TextureManager.backgroundTexture === texture) applyBackgroundFit();
+};
+
 const ColorManager = {
     colors: {
         backgroundColor: 0xFFFFFF,

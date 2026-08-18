@@ -1,0 +1,15 @@
+Source textures: Poly Haven (https://polyhaven.com)
+License: CC0 1.0 (Creative Commons Public Domain Dedication)
+http://creativecommons.org/publicdomain/zero/1.0/
+No attribution required, but noted here for provenance.
+
+marble.jpg  - "Marble 01"       by Rob Tuytel   https://polyhaven.com/a/marble_01
+wood.jpg    - "Dark Wood"                       https://polyhaven.com/a/dark_wood
+metal.jpg   - "Metal Plate"                     https://polyhaven.com/a/metal_plate
+leather.jpg - "Brown Leather"                   https://polyhaven.com/a/brown_leather
+granite.jpg - "Granite Tile"                    https://polyhaven.com/a/granite_tile
+fabric.jpg  - "Denim Fabric"                    https://polyhaven.com/a/denim_fabric
+
+Each is the 1K JPG diffuse/albedo map only (no normal/roughness maps -
+this project's MeshPhongMaterial doesn't use them). Downloaded as-is,
+not re-processed.

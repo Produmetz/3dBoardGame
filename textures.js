@@ -1,10 +1,14 @@
 /**
- * Общая библиотека процедурных текстур для фона и фигур — используется и
- * шахматами, и Го (chess/graphics.js, go/graphics-go.js). В проекте нет
- * файлов-картинок, поэтому "стандартный набор" — это узоры, рисуемые на
- * canvas и оборачиваемые в THREE.CanvasTexture, а не готовые изображения.
+ * Общая библиотека текстур для фона и фигур — используется и шахматами, и
+ * Го (chess/graphics.js, go/graphics-go.js).
+ *
+ * Материалы (мрамор/дерево/металл/кожа/ткань/гранит) — настоящие фото CC0
+ * с Poly Haven (см. textures/CREDITS.txt), а не нарисованные на canvas
+ * узоры: первая версия рисовала их процедурно и выглядела заметно "картонно"
+ * на глаз пользователя. Звёздное небо/градиент/сетка остались процедурными —
+ * это не материалы, а абстрактные фоны, рисовать их проще, чем искать фото.
  * Плюс поддержка своей картинки (fromFile) — грузится через FileReader и
- * THREE.TextureLoader.
+ * THREE.TextureLoader, как и фото-пресеты.
  *
  * Текстуры для фигур намеренно нейтральные/малонасыщенные: MeshPhongMaterial
  * умножает map на material.color, так что один и тот же узор, тонированный
@@ -13,6 +17,12 @@
  */
 const TextureLibrary = {
   _cache: new Map(),
+
+  // Вызывается графикой (chess/graphics.js, go/graphics-go.js) сразу после
+  // загрузки — фото грузятся асинхронно (в отличие от canvas-узоров, готовых
+  // сразу), а .repeat/.offset для фона (applyBackgroundFit) считаются по
+  // реальным размерам картинки, которых при первом применении ещё нет.
+  onPhotoLoaded: null,
 
   _canvas(size, draw) {
     const c = document.createElement('canvas');
@@ -25,82 +35,26 @@ const TextureLibrary = {
     return tex;
   },
 
-  // Разрешения подобраны так, чтобы фон (растягивается на весь экран через
-  // scene.background) не размывался при апскейле GPU на больших/hi-DPI
-  // мониторах — раньше 256-512px были заметно "мыльными" на весь экран.
-  // Число штрихов/звёзд масштабируется вместе с размером холста, иначе
-  // более крупный холст просто растянул бы то же количество деталей на
-  // большую пустую площадь, а не стал бы выглядеть детальнее.
-  marble(size = 1024) {
-    return this._canvas(size, (ctx, s) => {
-      ctx.fillStyle = '#e8e4da';
-      ctx.fillRect(0, 0, s, s);
-      const strokes = Math.round(14 * (s / 256));
-      for (let i = 0; i < strokes; i++) {
-        ctx.strokeStyle = `rgba(120,120,110,${0.25 + Math.random() * 0.3})`;
-        ctx.lineWidth = (1 + Math.random() * 2) * (s / 256);
-        ctx.beginPath();
-        let x = Math.random() * s;
-        ctx.moveTo(x, 0);
-        for (let y = 0; y <= s; y += s / 10) {
-          x += (Math.random() - 0.5) * 40 * (s / 256);
-          ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-      }
+  _photo(url) {
+    const tex = new THREE.TextureLoader().load(url, () => {
+      if (typeof TextureLibrary.onPhotoLoaded === 'function') TextureLibrary.onPhotoLoaded(tex);
     });
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    return tex;
   },
 
-  wood(size = 1024) {
-    return this._canvas(size, (ctx, s) => {
-      ctx.fillStyle = '#b5834a';
-      ctx.fillRect(0, 0, s, s);
-      for (let i = 0; i < 20; i++) {
-        ctx.strokeStyle = `rgba(90,55,20,${0.15 + Math.random() * 0.2})`;
-        ctx.lineWidth = (2 + Math.random() * 4) * (s / 256);
-        ctx.beginPath();
-        const yBase = (i / 20) * s + (Math.random() - 0.5) * 10 * (s / 256);
-        ctx.moveTo(0, yBase);
-        for (let x = 0; x <= s; x += 16) {
-          ctx.lineTo(x, yBase + Math.sin(x / 20 + i) * 6 * (s / 256));
-        }
-        ctx.stroke();
-      }
-    });
-  },
-
-  metal(size = 512) {
-    return this._canvas(size, (ctx, s) => {
-      const grad = ctx.createLinearGradient(0, 0, s, s);
-      grad.addColorStop(0, '#d7dce0');
-      grad.addColorStop(0.5, '#9099a1');
-      grad.addColorStop(1, '#d7dce0');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, s, s);
-      const img = ctx.getImageData(0, 0, s, s);
-      for (let i = 0; i < img.data.length; i += 4) {
-        const n = (Math.random() - 0.5) * 25;
-        img.data[i] += n;
-        img.data[i + 1] += n;
-        img.data[i + 2] += n;
-      }
-      ctx.putImageData(img, 0, 0);
-    });
-  },
-
-  fabric(size = 512) {
-    return this._canvas(size, (ctx, s) => {
-      ctx.fillStyle = '#555b66';
-      ctx.fillRect(0, 0, s, s);
-      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-      ctx.lineWidth = 1;
-      const step = Math.max(2, s / 64);
-      for (let i = 0; i < s; i += step) {
-        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, s); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(s, i); ctx.stroke();
-      }
-    });
-  },
+  // Путь на уровень вверх от корня сайта — все 8 страниц, использующих
+  // textures.js, лежат в chess/ или go/ (см. <script src="../textures.js">
+  // в их разметке), так что textures/ рядом с самой textures.js всегда
+  // "../textures/..." отсюда. Плоский относительный 'textures/marble.jpg'
+  // резолвился бы от текущей страницы и ушёл бы в chess/textures/... (404) -
+  // так и было при первой проверке.
+  marble() { return this._photo('../textures/marble.jpg'); },
+  wood() { return this._photo('../textures/wood.jpg'); },
+  metal() { return this._photo('../textures/metal.jpg'); },
+  leather() { return this._photo('../textures/leather.jpg'); },
+  granite() { return this._photo('../textures/granite.jpg'); },
+  fabric() { return this._photo('../textures/fabric.jpg'); },
 
   starfield(size = 1536) {
     return this._canvas(size, (ctx, s) => {
@@ -142,20 +96,22 @@ const TextureLibrary = {
   },
 
   // Пресеты, доступные в выпадающих списках (ключ -> подпись). Одни и те же
-  // генераторы предлагаются и для фона, и для фигур — разница только в
-  // масштабе (см. текст выше про тонирование).
-  figurePresets: { marble: 'Мрамор', wood: 'Дерево', metal: 'Металл', fabric: 'Ткань' },
-  backgroundPresets: { starfield: 'Звёздное небо', gradientSky: 'Градиент', grid: 'Сетка', marble: 'Мрамор', wood: 'Дерево' },
+  // текстуры предлагаются и для фона, и для фигур — разница только в
+  // масштабе (см. текст выше про тонирование) и в repeat/offset (см. _bgTileCount).
+  figurePresets: { marble: 'Мрамор', wood: 'Дерево', metal: 'Металл', leather: 'Кожа', fabric: 'Ткань' },
+  backgroundPresets: { starfield: 'Звёздное небо', gradientSky: 'Градиент', grid: 'Сетка', marble: 'Мрамор', wood: 'Дерево', granite: 'Гранит' },
 
-  // Узоры-"материалы" (не атмосферные градиент/звёзды) мостятся плиткой на
-  // фоне — иначе один квадратный холст, растянутый на весь (не квадратный)
-  // экран, теряется в размытии. Само число повторов по короткой стороне
-  // экрана задаётся здесь; фактический repeat.x/y с поправкой на соотношение
-  // сторон окна (чтобы плитки оставались квадратными, а не эллипсами)
-  // считает applyBackgroundFit() в graphics.js — тут этого сделать нельзя,
-  // это единственное место, которое знает текущий размер окна и следит за
-  // resize.
-  _bgTileCount: { marble: 4, wood: 4, grid: 4 },
+  // Материалы мостятся плиткой на фоне — иначе одна фотография, растянутая
+  // на весь (не квадратный) экран, теряется в размытии. Число повторов по
+  // короткой стороне экрана задаётся здесь — для настоящих фото (уже
+  // достаточно детальных самих по себе) держим его ниже, чем для
+  // процедурной "Сетки" (которой, наоборот, нужно больше повторов тонких
+  // линий, иначе она выглядит пусто). Фактический repeat.x/y с поправкой на
+  // соотношение сторон окна (чтобы плитки оставались квадратными, а не
+  // эллипсами) считает applyBackgroundFit() в graphics.js — тут этого
+  // сделать нельзя, это единственное место, которое знает текущий размер
+  // окна и следит за resize.
+  _bgTileCount: { marble: 2, wood: 2, granite: 2, grid: 4 },
 
   /**
    * Возвращает (и кэширует) текстуру пресета. kind — 'figure' или 'background':

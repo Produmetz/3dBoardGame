@@ -33,3 +33,7 @@
 # Go
 !go/
 !go/*
+
+# Shared texture photos (see textures.js / textures/CREDITS.txt)
+!textures/
+!textures/*

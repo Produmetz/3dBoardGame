@@ -111,6 +111,14 @@ function applyBackgroundFit() {
     }
 }
 
+// Фото-текстуры (см. textures.js TextureLibrary._photo) грузятся асинхронно —
+// на момент scene.background = texture их .image ещё не готов, поэтому
+// applyBackgroundFit() выше молча ничего не делает. Как только картинка
+// реально загрузится, пересчитываем ещё раз, если она всё ещё активна как фон.
+TextureLibrary.onPhotoLoaded = function (texture) {
+    if (TextureManager.backgroundTexture === texture) applyBackgroundFit();
+};
+
 const ColorManager = {
     // Цвета по умолчанию
     colors: {
