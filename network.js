@@ -18,11 +18,45 @@ class NetworkManager {
         this.checkLobbyRedirect();
     }
 
+    /** sessionStorage key for this page (chess vs go get separate slots, but a reload of the SAME page resumes). */
+    sessionStorageKey() {
+        return 'networkSession:' + window.location.pathname;
+    }
+
+    saveSession(data) {
+        try { sessionStorage.setItem(this.sessionStorageKey(), JSON.stringify(data)); } catch (e) {}
+    }
+
+    clearSession() {
+        try { sessionStorage.removeItem(this.sessionStorageKey()); } catch (e) {}
+    }
+
     checkLobbyRedirect() {
         const params = new URLSearchParams(window.location.search);
-        if (params.get('network') === 'true') {
-            let server = params.get('server') || '';
-            this.lobbyServerIndex = server;
+        const isFreshEntry = params.get('network') === 'true';
+        let saved = null;
+        if (!isFreshEntry) {
+            // No network params in the URL — either a page opened without
+            // going through the lobby, or (much more commonly) a reload of
+            // a page whose params we already stripped below on first entry.
+            // Resume from what was saved then, instead of silently falling
+            // back to an offline local game.
+            try {
+                const raw = sessionStorage.getItem(this.sessionStorageKey());
+                if (raw) saved = JSON.parse(raw);
+            } catch (e) {}
+        }
+
+        if (isFreshEntry || saved) {
+            const get = (key) => isFreshEntry ? (params.get(key) || '') : (saved[key] || '');
+
+            // Keep the RAW server value (index or URL, whatever the lobby
+            // sent) separate from the resolved WS URL below — lobbyServerIndex
+            // feeds the "back to lobby" link (lobby.html?server=<index>), which
+            // needs the index, not an already-resolved ws:// URL.
+            const rawServer = get('server');
+            this.lobbyServerIndex = rawServer;
+            let server = rawServer;
 
             // Если server — это число (индекс), получаем URL из localStorage
             if (server && !isNaN(parseInt(server))) {
@@ -39,23 +73,34 @@ class NetworkManager {
                 server = 'wss://176.32.33.76.nip.io';
             }
 
-            const token = params.get('token') || '';
-            const playerName = params.get('playerName') || 'Anonymous';
-            const role = params.get('role') || 'player';
+            const token = get('token');
+            const playerName = get('playerName') || 'Anonymous';
+            const role = get('role') || 'player';
 
             this.authToken = token;
             this.playerName = playerName;
             this.isSpectator = (role === 'spectator');
-            this.pendingRoomId = params.get('roomId');
-            this.pendingColor = params.get('color');
-            this.pendingOpponent = params.get('opponentName');
-            this.pendingRoomName = params.get('roomName');
+            this.pendingRoomId = get('roomId') || null;
+            this.pendingColor = get('color') || null;
+            this.pendingOpponent = get('opponentName') || null;
+            this.pendingRoomName = get('roomName') || null;
+
+            // Persist the RAW values (not the resolved WS url) so a later
+            // reload re-resolves server the same way a fresh entry would,
+            // and the "back to lobby" link keeps working.
+            this.saveSession({
+                server: rawServer, token, playerName, role,
+                roomId: this.pendingRoomId || '',
+                color: this.pendingColor || '',
+                opponentName: this.pendingOpponent || '',
+                roomName: this.pendingRoomName || '',
+            });
 
             setTimeout(() => {
                 this.connectWithToken(server, playerName, token);
-            }, 500);
+            }, isFreshEntry ? 500 : 0);
 
-            window.history.replaceState({}, '', window.location.pathname);
+            if (isFreshEntry) window.history.replaceState({}, '', window.location.pathname);
         }
     }
 
@@ -93,6 +138,10 @@ class NetworkManager {
     }
 
     goToLobbyAfterDisconnect() {
+        // Reconnection attempts are exhausted (or a targeted reconnect
+        // confirmed the room is gone) — the saved session is dead, so don't
+        // let a later reload of this page keep trying to resurrect it.
+        this.clearSession();
         if (window.location.search.includes('network=true') || this.lobbyServerIndex) {
             const server = this.lobbyServerIndex || '0';
             const token = this.authToken || '';
@@ -376,6 +425,7 @@ class NetworkManager {
         this.roomId = null;
         this.playerColor = null;
         this.opponentName = null;
+        this.clearSession();
 
         const server = this.lobbyServerIndex || '0';
         const token = this.authToken || '';
@@ -389,6 +439,7 @@ class NetworkManager {
         this.roomId = null;
         this.playerColor = null;
         this.opponentName = null;
+        this.clearSession();
 
         // Перенаправляем обратно в лобби (параметры сохранены в constructor)
         const server = this.lobbyServerIndex || '0';
@@ -458,6 +509,7 @@ class NetworkManager {
             this.socket.close();
         }
         this.connected = false;
+        this.clearSession();
 
         // Перенаправляем обратно в лобби (параметры сохранены в constructor)
         const server = this.lobbyServerIndex || '0';
