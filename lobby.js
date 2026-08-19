@@ -242,9 +242,11 @@ class LobbyManager {
                 this.onRoomDeleted(data.roomId);
                 break;
 
-            case 'replay':
-                window.location.href = 'replay.html?data=' + encodeURIComponent(JSON.stringify(data));
+            case 'replay': {
+                const page = data.gameType === 'go' ? 'go/replay.html' : 'chess/replay.html';
+                window.location.href = `${page}?gameId=${data.gameId}&serverUrl=${encodeURIComponent(this.serverUrl)}`;
                 break;
+            }
 
             case 'error': {
                 UI.toast(data.message, 'error');

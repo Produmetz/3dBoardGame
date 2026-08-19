@@ -1,7 +1,7 @@
 /*
  * Lobby-specific styles only. Base chrome (body, .container, .header, .panel,
  * .btn*, .input-group, .modal*, .status-dot, .spinner) lives in styles.css,
- * which lobby.html and replay.html both load alongside this file.
+ * which lobby.html also loads alongside this file.
  */
 
 .main-grid {

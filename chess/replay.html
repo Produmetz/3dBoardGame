@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="game-type" content="chess">
+    <title>Просмотр партии — 3D Шахматы</title>
+    <link rel="stylesheet" href="../tokens.css">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../game-page.css">
+    <link rel="stylesheet" href="../ui-feedback.css">
+    <style>
+        #replay-loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #eef4ff;
+            font-size: 1.1em;
+            z-index: 50;
+        }
+
+        .replay-controls {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .replay-controls .game-btn {
+            min-width: 42px;
+        }
+
+        #replay-move-list {
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        #replay-move-list .replay-move {
+            padding: 4px 6px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        #replay-move-list .replay-move:hover {
+            background: rgba(76, 201, 240, 0.15);
+        }
+
+        #replay-move-list .replay-move.active {
+            background: rgba(76, 201, 240, 0.35);
+            color: #eef4ff;
+        }
+    </style>
+</head>
+
+<body>
+    <button id="toggle-panels" class="game-btn">☰</button>
+
+    <div class="game-panel" id="game-panel">
+        <div class="panel-section" id="replay-header">
+            <h3>Просмотр партии</h3>
+            <div class="panel-content">
+                <div id="replay-players">—</div>
+                <div id="replay-meta" style="color:#9bb4d0; margin-top:6px; font-size:0.9em;"></div>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h3>Ходы</h3>
+            <div class="panel-content">
+                <div class="replay-controls" style="margin-bottom:10px;">
+                    <button id="replay-first" class="game-btn" title="В начало">⏮</button>
+                    <button id="replay-prev" class="game-btn" title="Назад">◀</button>
+                    <button id="replay-play" class="game-btn" title="Воспроизвести">▶</button>
+                    <button id="replay-next" class="game-btn" title="Вперёд">▶</button>
+                    <button id="replay-last" class="game-btn" title="В конец">⏭</button>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                    <label for="replay-speed" style="color:#7bdff9; font-size:0.85em;">Скорость:</label>
+                    <select id="replay-speed" class="game-btn" style="width:auto; padding:4px 8px;">
+                        <option value="1500">Медленно</option>
+                        <option value="800" selected>Средне</option>
+                        <option value="350">Быстро</option>
+                    </select>
+                    <span id="replay-progress" style="color:#9bb4d0; font-size:0.85em; margin-left:auto;">0 / 0</span>
+                </div>
+                <div id="replay-move-list"></div>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h3>Действия</h3>
+            <div class="panel-content">
+                <div class="buttons-row">
+                    <button id="replay-back" class="game-btn">← Назад</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="replay-loading">Загрузка партии…</div>
+
+    <!-- Подключаем Three.js и OrbitControls из CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
+
+    <script src="../ui-feedback.js"></script>
+    <script src="chess-engine.js"></script>
+    <script src="../appearance.js"></script>
+    <script src="../textures.js"></script>
+    <script src="graphics.js"></script>
+    <script src="chess-replay.js"></script>
+</body>
+
+</html>
