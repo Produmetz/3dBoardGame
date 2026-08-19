@@ -1095,11 +1095,15 @@ class Game {
     }
 
     updateOpponentInfo(name, color, rating) {
-        document.getElementById('net-opponent-name').style.display = 'none';
-        document.getElementById('net-opponent-info').style.display = 'inline';
+        // net-opponent-name holds the actual name and must stay visible —
+        // net-opponent-info is just the trailing "(color) — рейтинг: X" bit,
+        // shown alongside the name only when there's real color/rating data.
+        document.getElementById('net-opponent-name').style.display = 'inline';
         document.getElementById('net-opponent-name').textContent = name;
-        document.getElementById('net-opponent-color').textContent = color;
-        document.getElementById('net-opponent-rating').textContent = rating || '—';
+        const hasExtra = color != null || rating != null;
+        document.getElementById('net-opponent-info').style.display = hasExtra ? 'inline' : 'none';
+        if (color != null) document.getElementById('net-opponent-color').textContent = color;
+        if (rating != null) document.getElementById('net-opponent-rating').textContent = rating;
     }
 
     // --- Network clocks ---
