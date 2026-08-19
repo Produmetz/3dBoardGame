@@ -407,7 +407,7 @@ class GoGame {
 
     pass(fromBot = false) {
         if (!this.board || this.board.isGameOver() || this.board.isAwaitingScoring()) return;
-        if (this.isNetworkGame && !this.isMyTurn) return;
+        if (this.isNetworkGame && !this.isMyTurn && !this.isNetworkMove) return;
         if (this.botThinking && !fromBot) return;
         if (!this.isNetworkGame && this.botEnabled && this.isBotSideToMove() && !fromBot) return;
 
