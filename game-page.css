@@ -425,6 +425,11 @@ canvas {
         overflow-y: visible;
         /* отключаем собственные скроллы */
         padding-bottom: 10px;
+        /* Резерв под #toggle-panels — он зафиксирован по центру высоты экрана
+           поверх всего, независимо от прокрутки, поэтому любой контент,
+           доехавший до середины экрана (например, часы в сетевой комнате),
+           иначе окажется под ним. */
+        padding-right: 44px;
     }
 
     body {
@@ -494,4 +499,48 @@ canvas {
     #toggle-panels {
         display: none;
     }
+}
+
+/* Network game clocks (see NetworkManager.updateClocks / game.updateClocks in
+   chess/game.js and go/game-go.js) */
+.net-clocks {
+    display: flex;
+    gap: 8px;
+    border-top: 1px solid var(--color-accent);
+    padding-top: 8px;
+    margin-top: 8px;
+}
+
+.net-clock {
+    flex: 1;
+    text-align: center;
+    padding: 6px 4px;
+    border-radius: var(--radius-sm);
+    background: var(--color-panel-bg-game);
+    border: 1px solid var(--color-border);
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.net-clock-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary, #9bb4d0);
+    margin-bottom: 2px;
+}
+
+.net-clock-time {
+    display: block;
+    font-family: 'Courier New', monospace;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.net-clock.active {
+    border-color: var(--color-accent);
+    background: rgba(76, 201, 240, 0.12);
+}
+
+.net-clock.low-time .net-clock-time {
+    color: var(--color-danger);
 }

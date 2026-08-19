@@ -18,6 +18,34 @@ function getGameIcon(type) {
     return GAME_TYPES[type]?.icon || '🎮';
 }
 
+function formatTimeControlLabel(initialSeconds, incrementSeconds) {
+    if (initialSeconds == null) return '';
+    const minutes = Math.round(initialSeconds / 60);
+    return `⏱ ${minutes}+${incrementSeconds || 0}`;
+}
+
+// Time control presets shared by the create-room form — value is
+// "initialSeconds|incrementSeconds", or "none"/"custom" for the two special cases.
+const TIME_CONTROL_PRESETS = {
+    none: null,
+    bullet1: { initialSeconds: 60, incrementSeconds: 0 },
+    bullet2: { initialSeconds: 120, incrementSeconds: 1 },
+    blitz3: { initialSeconds: 180, incrementSeconds: 0 },
+    blitz3_2: { initialSeconds: 180, incrementSeconds: 2 },
+    blitz5: { initialSeconds: 300, incrementSeconds: 0 },
+    rapid10: { initialSeconds: 600, incrementSeconds: 0 },
+    rapid15: { initialSeconds: 900, incrementSeconds: 10 },
+    classical30: { initialSeconds: 1800, incrementSeconds: 0 }
+};
+
+// Go board-size presets — the engine is genuinely n-dimensional, so these are
+// real board variants (unlike chess, which only ever runs on one fixed 3D board).
+const GO_BOARD_PRESETS = {
+    small: { boardX: 4, boardY: 4, boardZ: 4, komi: 6.5 },
+    standard: { boardX: 6, boardY: 6, boardZ: 6, komi: 7.5 },
+    large: { boardX: 9, boardY: 9, boardZ: 9, komi: 7.5 }
+};
+
 class LobbyManager {
     constructor() {
         this.socket = null;
@@ -29,7 +57,6 @@ class LobbyManager {
         this.selectedRoomId = null;
         this.selectedRoomHasPassword = false;
         this.myRooms = [];
-        this.stayInLobby = false; // Flag: player came back from game, don't redirect
 
         this.parseParams();
         this.connectToServer();
@@ -46,10 +73,6 @@ class LobbyManager {
         this.serverIndex = Number.isNaN(rawServer) ? -1 : rawServer;
         this.authToken = params.get('token');
         this.nickname = params.get('nickname');
-        // If ?stay=1 is in URL, player came back from game - don't auto-redirect
-        if (params.get('stay') === '1') {
-            this.stayInLobby = true;
-        }
         // ?tab=create-room (etc.) - e.g. from the top-nav "Создать запрос
         // на игру" shortcut - opens straight to that tab instead of Quick Play.
         this.initialTab = params.get('tab');
@@ -74,7 +97,7 @@ class LobbyManager {
                 if (target) target.classList.add('active');
 
                 if (tab.dataset.tab === 'my-rooms') this.getMyRooms();
-                if (tab.dataset.tab === 'all-rooms') this.requestRoomList();
+                if (tab.dataset.tab === 'play') this.requestRoomList();
             });
         });
 
@@ -96,15 +119,31 @@ class LobbyManager {
             document.getElementById('go-options').style.display = e.target.value === 'go' ? 'block' : 'none';
             document.getElementById('chess-options').style.display = e.target.value === 'chess' ? 'block' : 'none';
         });
+        document.getElementById('room-go-preset')?.addEventListener('change', (e) => {
+            document.getElementById('go-board-custom').style.display = e.target.value === 'custom' ? 'block' : 'none';
+        });
+        document.getElementById('room-time-control')?.addEventListener('change', (e) => {
+            document.getElementById('room-time-custom').style.display = e.target.value === 'custom' ? 'flex' : 'none';
+        });
         document.getElementById('leaderboard-game')?.addEventListener('change', () => this.loadLeaderboard());
         document.getElementById('logout-btn').addEventListener('click', () => this.logout());
         document.getElementById('join-color-mode')?.addEventListener('change', (e) => {
             document.getElementById('join-color-select').style.display = e.target.value === 'pick' ? 'block' : 'none';
         });
 
-        // Quick Play buttons
-        document.getElementById('qp-chess').addEventListener('click', () => this.quickPlay('chess'));
-        document.getElementById('qp-go').addEventListener('click', () => this.quickPlay('go'));
+        // Quick Play: game-type toggle (selects, doesn't start searching) + explicit "Найти игру" button
+        this.selectedQuickPlayType = 'chess';
+        document.querySelectorAll('#qp-type-grid .quick-play-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#qp-type-grid .quick-play-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.selectedQuickPlayType = btn.dataset.type;
+                document.querySelectorAll('.qp-go-only').forEach(el => {
+                    el.style.display = this.selectedQuickPlayType === 'go' ? 'block' : 'none';
+                });
+            });
+        });
+        document.getElementById('qp-find-btn').addEventListener('click', () => this.quickPlay(this.selectedQuickPlayType));
 
         // Join by Code
         document.getElementById('code-join-btn').addEventListener('click', () => this.joinByCode());
@@ -153,18 +192,12 @@ class LobbyManager {
                 break;
 
             case 'joined_room':
-                if (this.isReconnecting || this.stayInLobby) {
-                    // Don't redirect to game - just refresh lists
-                    this.isReconnecting = false;
-                    this.stayInLobby = false;
-                    this.requestRoomList();
-                    this.getMyRooms();
-                    this.requestStats();
-                    this.requestGameHistory();
-                    this.loadLeaderboard();
-                } else {
-                    this.onJoinedRoom(data);
-                }
+                // A bare connect (auth_join with no roomId) never gets a
+                // joined_room reply from the server — only an explicit
+                // create/join/quick-play/code/"Мои комнаты" action does. So
+                // reaching this case always means the player just asked to
+                // enter a specific game, and it's safe to navigate there.
+                this.onJoinedRoom(data);
                 break;
 
             case 'room_list':
@@ -213,9 +246,18 @@ class LobbyManager {
                 window.location.href = 'replay.html?data=' + encodeURIComponent(JSON.stringify(data));
                 break;
 
-            case 'error':
+            case 'error': {
                 UI.toast(data.message, 'error');
+                // Re-render "Мои комнаты" in case a disabled "Войти" button needs resetting.
+                if (document.getElementById('tab-my-rooms')?.classList.contains('active')) this.getMyRooms();
+                const qpStatus = document.getElementById('quick-play-status');
+                if (qpStatus) qpStatus.innerHTML = '';
+                // get_room_by_code failures also land here (as a plain error message,
+                // not a room_info with an error field) — clear the "Поиск комнаты..." status.
+                const codeStatus = document.getElementById('code-status');
+                if (codeStatus && codeStatus.textContent === 'Поиск комнаты...') codeStatus.textContent = '';
                 break;
+            }
         }
     }
 
@@ -265,7 +307,18 @@ class LobbyManager {
     quickPlay(gameType) {
         const status = document.getElementById('quick-play-status');
         status.innerHTML = '<span class="spinner"></span> Поиск соперника...';
-        this.send({ type: 'quick_play', gameType });
+
+        const gameMode = document.getElementById('qp-game-mode')?.value || 'rated';
+        const timeControlPreset = document.getElementById('qp-time-control')?.value || 'none';
+        const msg = { type: 'quick_play', gameType, gameMode, timeControl: TIME_CONTROL_PRESETS[timeControlPreset] ?? null };
+
+        if (gameType === 'go') {
+            const board = GO_BOARD_PRESETS[document.getElementById('qp-go-board')?.value] ?? GO_BOARD_PRESETS.standard;
+            Object.assign(msg, board);
+            msg.ruleSet = document.getElementById('qp-go-rule-set')?.value || 'chinese';
+        }
+
+        this.send(msg);
     }
 
     // --- Join by Code ---
@@ -286,13 +339,10 @@ class LobbyManager {
     }
 
     onRoomInfo(data) {
+        // Lookup failures arrive as a separate 'error' message (see the
+        // generic case above), not as a room_info with an error field — this
+        // handler only ever runs on a successful lookup.
         const status = document.getElementById('code-status');
-        if (!data || data.error) {
-            status.textContent = data?.error || 'Комната не найдена';
-            status.className = 'code-status error';
-            return;
-        }
-
         this.selectedRoomId = data.id;
         this.selectedRoomHasPassword = data.hasPassword;
         this.selectedRoomGameType = data.gameType;
@@ -327,18 +377,9 @@ class LobbyManager {
             const card = document.createElement('div');
             card.className = 'my-room-card';
 
-            const gameUrl = getGameUrl(room.gameType);
-            const gameParams = new URLSearchParams({
-                network: 'true',
-                roomId: room.id,
-                gameType: room.gameType,
-                server: this.serverIndex,
-                token: this.authToken,
-                playerName: this.nickname
-            });
-
             const statusClass = room.status === 'playing' ? 'status-playing' : 'status-waiting';
             const statusText = room.status === 'playing' ? 'В игре' : 'Ожидание';
+            const timeLabel = formatTimeControlLabel(room.timeInitialSeconds, room.timeIncrementSeconds);
 
             card.innerHTML = `
                 <div class="my-room-card-header">
@@ -348,13 +389,14 @@ class LobbyManager {
                 <div class="my-room-card-details">
                     <span>${getGameName(room.gameType)}</span>
                     <span>${room.opponentName ? 'vs ' + this.escapeHtml(room.opponentName) : 'Ожидание игрока'}</span>
+                    ${timeLabel ? `<span>${timeLabel}</span>` : ''}
                 </div>
                 <div class="share-code">
                     <span class="room-code">${room.code}</span>
                     <button class="copy-btn" data-code="${room.code}">Копировать</button>
                 </div>
                 <div class="my-room-card-actions">
-                    <a href="${gameUrl}?${gameParams.toString()}" class="btn btn-primary btn-sm">Войти</a>
+                    <button class="btn btn-primary btn-sm" data-enter="${room.id}">Войти</button>
                     <button class="btn btn-secondary btn-sm" data-leave="${room.id}">Покинуть</button>
                     ${room.isOwner ? `<button class="btn btn-danger btn-sm" data-delete="${room.id}">Удалить</button>` : ''}
                 </div>
@@ -366,6 +408,18 @@ class LobbyManager {
                     e.target.textContent = 'Скопировано!';
                     setTimeout(() => e.target.textContent = 'Копировать', 1500);
                 });
+            });
+
+            const enterBtn = card.querySelector('[data-enter]');
+            enterBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                enterBtn.disabled = true;
+                enterBtn.textContent = 'Вход...';
+                // Explicit join_room round-trip (not a raw link into the game
+                // page) — this is what lets several concurrent games coexist
+                // and reliably lands you in THIS room even if focus was on
+                // another one; the joined_room reply navigates via onJoinedRoom.
+                this.enterRoom(room.id);
             });
 
             const leaveBtn = card.querySelector('[data-leave]');
@@ -408,6 +462,7 @@ class LobbyManager {
                 <div class="room-info">
                     <span>${room.playersCount}/2 игроков</span>
                     ${room.spectatorCount ? `<span>👁 ${room.spectatorCount}</span>` : ''}
+                    ${formatTimeControlLabel(room.timeInitialSeconds, room.timeIncrementSeconds) ? `<span>${formatTimeControlLabel(room.timeInitialSeconds, room.timeIncrementSeconds)}</span>` : ''}
                     ${room.code ? `<span style="font-family:monospace; color:#4cc9f0;">${room.code}</span>` : ''}
                 </div>
             `;
@@ -441,7 +496,7 @@ class LobbyManager {
         const password = document.getElementById('join-password').value;
         const role = document.getElementById('join-role')?.value || 'player';
         const colorMode = document.getElementById('join-color-mode')?.value || 'auto';
-        const color = document.getElementById('join-color')?.value || 'white';
+        const color = document.getElementById('join-color')?.value === 'black' ? 'Black' : 'White';
 
         if (this.selectedRoomHasPassword && !password) {
             UI.toast('Введите пароль', 'error');
@@ -463,11 +518,39 @@ class LobbyManager {
         document.getElementById('join-modal').classList.remove('active');
     }
 
+    enterRoom(roomId) {
+        this.send({ type: 'join_room', roomId: roomId, password: null, role: 'player' });
+    }
+
     async leaveRoom(roomId) {
         if (await UI.confirm('Покинуть комнату?')) {
             this.send({ type: 'leave_room' });
             // Lists will refresh when 'left_room' response arrives
         }
+    }
+
+    resolveTimeControl() {
+        const preset = document.getElementById('room-time-control')?.value || 'none';
+        if (preset === 'custom') {
+            const minutes = parseFloat(document.getElementById('room-time-custom-minutes')?.value);
+            const increment = parseInt(document.getElementById('room-time-custom-increment')?.value, 10);
+            if (!minutes || minutes <= 0) return null;
+            return { initialSeconds: Math.round(minutes * 60), incrementSeconds: Number.isFinite(increment) && increment >= 0 ? increment : 0 };
+        }
+        return TIME_CONTROL_PRESETS[preset] ?? null;
+    }
+
+    resolveGoBoard() {
+        const preset = document.getElementById('room-go-preset')?.value || 'standard';
+        if (preset === 'custom') {
+            return {
+                boardX: parseInt(document.getElementById('room-board-x').value, 10),
+                boardY: parseInt(document.getElementById('room-board-y').value, 10),
+                boardZ: parseInt(document.getElementById('room-board-z').value, 10),
+                komi: parseFloat(document.getElementById('room-komi').value)
+            };
+        }
+        return GO_BOARD_PRESETS[preset] ?? GO_BOARD_PRESETS.standard;
     }
 
     createRoom() {
@@ -477,6 +560,9 @@ class LobbyManager {
             return;
         }
         const gameType = document.getElementById('room-game-type').value;
+        const board = gameType === 'chess'
+            ? { boardX: 6, boardY: 6, boardZ: 8, komi: null }
+            : this.resolveGoBoard();
 
         this.send({
             type: 'create_room',
@@ -487,12 +573,13 @@ class LobbyManager {
             allowSpectators: document.getElementById('room-allow-spectators')?.checked ?? true,
             colorMode: document.getElementById('room-color-mode')?.value || 'creator_pick',
             gameMode: document.getElementById('room-game-mode')?.value || 'rated',
-            creatorColor: document.getElementById('room-creator-color')?.value || 'white',
-            boardX: gameType === 'chess' ? 6 : parseInt(document.getElementById('room-board-x').value),
-            boardY: gameType === 'chess' ? 6 : parseInt(document.getElementById('room-board-y').value),
-            boardZ: gameType === 'chess' ? 8 : parseInt(document.getElementById('room-board-z').value),
-            komi: parseFloat(document.getElementById('room-komi').value),
-            ruleSet: gameType === 'go' ? (document.getElementById('room-rule-set')?.value || 'chinese') : undefined
+            creatorColor: document.getElementById('room-creator-color')?.value === 'black' ? 'Black' : 'White',
+            boardX: board.boardX,
+            boardY: board.boardY,
+            boardZ: board.boardZ,
+            komi: board.komi,
+            ruleSet: gameType === 'go' ? (document.getElementById('room-rule-set')?.value || 'chinese') : undefined,
+            timeControl: this.resolveTimeControl()
         });
     }
 
@@ -612,9 +699,4 @@ class LobbyManager {
 
 document.addEventListener('DOMContentLoaded', () => {
     window.lobby = new LobbyManager();
-
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('reconnect') === 'true') {
-        window.lobby.isReconnecting = true;
-    }
 });

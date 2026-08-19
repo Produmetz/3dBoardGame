@@ -15,6 +15,14 @@ class Game {
         this.isMyTurn = true;
         this.selectedRoomId = null;
 
+        // Network clocks — see updateClocks()/renderClocks(). whiteMs/blackMs
+        // hold the last server-synced snapshot; the ticker interpolates
+        // locally between syncs so the display doesn't visibly stall.
+        this.clockWhiteMs = null;
+        this.clockBlackMs = null;
+        this.clockLastSyncAt = null;
+        this.clockTickInterval = null;
+
         // Локальный бот
         this.botEnabled = false;
         this.botColor = 'Black';
@@ -835,6 +843,7 @@ class Game {
     disconnect() {
         this.networkManager.disconnect();
         this.isNetworkGame = false;
+        this.stopClockTicker();
         this.setMyTurn(true);
         this.updateNetworkStatus('Не подключено');
         this.showNetworkConnect();
@@ -967,6 +976,7 @@ class Game {
     }
 
     handleGameOver(data) {
+        this.stopClockTicker();
         const panel = document.getElementById('game-result-panel');
         const textEl = document.getElementById('game-result-text');
         const reasonEl = document.getElementById('game-result-reason');
@@ -1092,9 +1102,71 @@ class Game {
         document.getElementById('net-opponent-rating').textContent = rating || '—';
     }
 
+    // --- Network clocks ---
+
+    updateClocks(whiteMs, blackMs, initialSeconds, incrementSeconds) {
+        if (whiteMs === undefined && blackMs === undefined) return;
+        this.clockWhiteMs = whiteMs ?? this.clockWhiteMs;
+        this.clockBlackMs = blackMs ?? this.clockBlackMs;
+        this.clockLastSyncAt = Date.now();
+        const el = document.getElementById('net-clocks');
+        if (el) el.style.display = 'flex';
+        this.renderClocks();
+        if (!this.clockTickInterval) {
+            this.clockTickInterval = setInterval(() => this.renderClocks(), 250);
+        }
+    }
+
+    stopClockTicker() {
+        if (this.clockTickInterval) {
+            clearInterval(this.clockTickInterval);
+            this.clockTickInterval = null;
+        }
+    }
+
+    formatClockTime(ms) {
+        if (ms == null) return '—:—';
+        const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+        const m = Math.floor(totalSeconds / 60);
+        const s = totalSeconds % 60;
+        return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    renderClocks() {
+        if (this.clockWhiteMs == null && this.clockBlackMs == null) return;
+        const elapsed = Date.now() - (this.clockLastSyncAt || Date.now());
+        // Only the side to move is actually burning time between syncs — the
+        // server ticks the mover's clock on each move, so interpolate the
+        // same way locally to avoid a visible stall between server updates.
+        let whiteMs = this.clockWhiteMs;
+        let blackMs = this.clockBlackMs;
+        if (this.currentPlayer === 'White' && whiteMs != null) whiteMs = Math.max(0, whiteMs - elapsed);
+        if (this.currentPlayer === 'Black' && blackMs != null) blackMs = Math.max(0, blackMs - elapsed);
+
+        const myColor = this.networkManager.playerColor;
+        const meIsWhite = myColor === 'White';
+        const meEl = document.getElementById('net-clock-me');
+        const oppEl = document.getElementById('net-clock-opponent');
+        const meTimeEl = document.getElementById('net-clock-me-time');
+        const oppTimeEl = document.getElementById('net-clock-opponent-time');
+        if (!meEl || !oppEl || !meTimeEl || !oppTimeEl) return;
+
+        const meMs = meIsWhite ? whiteMs : blackMs;
+        const oppMs = meIsWhite ? blackMs : whiteMs;
+        meTimeEl.textContent = this.formatClockTime(meMs);
+        oppTimeEl.textContent = this.formatClockTime(oppMs);
+
+        const meActive = (this.currentPlayer === 'White') === meIsWhite;
+        meEl.classList.toggle('active', meActive);
+        oppEl.classList.toggle('active', !meActive);
+        meEl.classList.toggle('low-time', meMs != null && meMs < 10000);
+        oppEl.classList.toggle('low-time', oppMs != null && oppMs < 10000);
+    }
+
     hideNetworkPanel() {
         document.getElementById('network-panel').style.display = 'none';
         this.isNetworkGame = false;
+        this.stopClockTicker();
         this.updateBotPanelVisibility();
         this.updateEvaluationPanelVisibility();
     }

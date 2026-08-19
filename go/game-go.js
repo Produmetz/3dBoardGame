@@ -12,6 +12,12 @@ class GoGame {
         this.isMyTurn = true;
         this.selectedRoomId = null;
 
+        // Network clocks — see updateClocks()/renderClocks() (mirrors chess/game.js).
+        this.clockWhiteMs = null;
+        this.clockBlackMs = null;
+        this.clockLastSyncAt = null;
+        this.clockTickInterval = null;
+
         // Этап согласования мёртвых камней перед подсчётом очков.
         this.deadStones = new Set();
         this.scoringSubmitted = false;
@@ -666,6 +672,7 @@ class GoGame {
     disconnect() {
         this.networkManager.disconnect();
         this.isNetworkGame = false;
+        this.stopClockTicker();
         this.setMyTurn(true);
         this.updateNetworkStatus('Не подключено');
         this.showNetworkConnect();
@@ -785,6 +792,7 @@ class GoGame {
     }
 
     handleGameOver(data) {
+        this.stopClockTicker();
         if (this.board.isAwaitingScoring()) {
             // The server only reaches game_over via a matched dead-stone
             // agreement, so our own last-submitted marking is by definition
@@ -952,9 +960,72 @@ class GoGame {
         document.getElementById('net-opponent-rating').textContent = rating || '—';
     }
 
+    // --- Network clocks (mirrors chess/game.js) ---
+
+    updateClocks(whiteMs, blackMs, initialSeconds, incrementSeconds) {
+        if (whiteMs === undefined && blackMs === undefined) return;
+        this.clockWhiteMs = whiteMs ?? this.clockWhiteMs;
+        this.clockBlackMs = blackMs ?? this.clockBlackMs;
+        this.clockLastSyncAt = Date.now();
+        const el = document.getElementById('net-clocks');
+        if (el) el.style.display = 'flex';
+        this.renderClocks();
+        if (!this.clockTickInterval) {
+            this.clockTickInterval = setInterval(() => this.renderClocks(), 250);
+        }
+    }
+
+    stopClockTicker() {
+        if (this.clockTickInterval) {
+            clearInterval(this.clockTickInterval);
+            this.clockTickInterval = null;
+        }
+    }
+
+    formatClockTime(ms) {
+        if (ms == null) return '—:—';
+        const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+        const m = Math.floor(totalSeconds / 60);
+        const s = totalSeconds % 60;
+        return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    renderClocks() {
+        if (this.clockWhiteMs == null && this.clockBlackMs == null) return;
+        // Paused server-side during the dead-stone scoring-agreement phase — don't
+        // keep interpolating a countdown for a turn that isn't actually running.
+        const paused = this.board && this.board.isAwaitingScoring && this.board.isAwaitingScoring();
+        const elapsed = paused ? 0 : Date.now() - (this.clockLastSyncAt || Date.now());
+        const currentColor = this.board && this.board.getCurrentPlayer() === GoEngine.Stone.BLACK ? 'Black' : 'White';
+        let whiteMs = this.clockWhiteMs;
+        let blackMs = this.clockBlackMs;
+        if (currentColor === 'White' && whiteMs != null) whiteMs = Math.max(0, whiteMs - elapsed);
+        if (currentColor === 'Black' && blackMs != null) blackMs = Math.max(0, blackMs - elapsed);
+
+        const myColor = this.networkManager.playerColor;
+        const meIsWhite = myColor === 'White';
+        const meEl = document.getElementById('net-clock-me');
+        const oppEl = document.getElementById('net-clock-opponent');
+        const meTimeEl = document.getElementById('net-clock-me-time');
+        const oppTimeEl = document.getElementById('net-clock-opponent-time');
+        if (!meEl || !oppEl || !meTimeEl || !oppTimeEl) return;
+
+        const meMs = meIsWhite ? whiteMs : blackMs;
+        const oppMs = meIsWhite ? blackMs : whiteMs;
+        meTimeEl.textContent = this.formatClockTime(meMs);
+        oppTimeEl.textContent = this.formatClockTime(oppMs);
+
+        const meActive = (currentColor === 'White') === meIsWhite;
+        meEl.classList.toggle('active', meActive);
+        oppEl.classList.toggle('active', !meActive);
+        meEl.classList.toggle('low-time', meMs != null && meMs < 10000);
+        oppEl.classList.toggle('low-time', oppMs != null && oppMs < 10000);
+    }
+
     hideNetworkPanel() {
         document.getElementById('network-panel').style.display = 'none';
         this.isNetworkGame = false;
+        this.stopClockTicker();
         this.updateBotPanelVisibility();
         this.updateEvaluationPanelVisibility();
     }

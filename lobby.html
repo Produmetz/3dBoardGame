@@ -16,10 +16,14 @@
             gap: 0;
             border-bottom: 2px solid #1e2a36;
             margin-bottom: 1.2rem;
-            overflow: hidden;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
         }
 
         .lobby-tab {
+            flex: 0 0 auto;
             padding: 0.6rem 1rem;
             background: none;
             border: none;
@@ -58,6 +62,25 @@
             padding: 2rem 0;
         }
 
+        .quick-play-options {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.8rem;
+            max-width: 560px;
+            width: 100%;
+        }
+
+        .quick-play-options .input-group {
+            flex: 1 1 130px;
+            min-width: 130px;
+            margin-bottom: 0;
+        }
+
+        .quick-play-options label {
+            font-size: 0.75rem;
+        }
+
         .quick-play-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -66,16 +89,36 @@
             width: 100%;
         }
 
+        .qp-step-label {
+            font-size: 0.8rem;
+            color: #7a8eaa;
+            margin: 0 0 0.4rem;
+            text-align: center;
+        }
+
         .quick-play-btn {
-            padding: 2rem 1rem;
+            padding: 1.2rem 1rem;
             border: 2px solid #2a3a4a;
             border-radius: 12px;
             background: #0e1622;
             color: #c9e9ff;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             cursor: pointer;
             transition: border-color 0.2s, background 0.2s, transform 0.15s;
             text-align: center;
+        }
+
+        .quick-play-btn.active {
+            border-color: #4cc9f0;
+            background: rgba(76, 201, 240, 0.12);
+            box-shadow: 0 0 0 1px rgba(76, 201, 240, 0.3) inset;
+        }
+
+        .quick-play-find-btn {
+            width: 100%;
+            max-width: 300px;
+            padding: 0.8rem 1.5rem;
+            font-size: 1.05rem;
         }
 
         .quick-play-btn:hover {
@@ -115,6 +158,21 @@
         /* Create Room form */
         .create-form {
             max-width: 420px;
+        }
+
+        .time-custom-row {
+            display: flex;
+            gap: 0.8rem;
+        }
+
+        .time-custom-row .input-group {
+            flex: 1;
+        }
+
+        .board-note {
+            font-size: 0.85rem;
+            color: #7a8eaa;
+            margin: 0 0 0.8rem;
         }
 
         /* Join by Code */
@@ -308,28 +366,80 @@
         <div class="panel">
             <!-- Tabs -->
             <div class="lobby-tabs" id="lobby-tabs">
-                <button class="lobby-tab active" data-tab="quick-play">Быстрая игра</button>
+                <button class="lobby-tab active" data-tab="play">Играть</button>
                 <button class="lobby-tab" data-tab="create-room">Создать комнату</button>
                 <button class="lobby-tab" data-tab="join-code">Войти по коду</button>
                 <button class="lobby-tab" data-tab="my-rooms">Мои комнаты</button>
-                <button class="lobby-tab" data-tab="all-rooms">Все комнаты</button>
             </div>
 
-            <!-- Quick Play -->
-            <div class="tab-content active" id="tab-quick-play">
+            <!-- Играть: быстрая игра + список открытых комнат в одном месте -->
+            <div class="tab-content active" id="tab-play">
                 <div class="quick-play-section">
-                    <h2 style="margin-bottom:0.5rem;">Выберите игру</h2>
-                    <div class="quick-play-grid">
-                        <button class="quick-play-btn" id="qp-chess">
+                    <h2 style="margin-bottom:0.5rem;">Быстрая игра</h2>
+
+                    <p class="qp-step-label">Тип игры</p>
+                    <div class="quick-play-grid" id="qp-type-grid">
+                        <button type="button" class="quick-play-btn active" id="qp-type-chess" data-type="chess">
                             <span class="qp-icon">♟</span>
                             Шахматы
                         </button>
-                        <button class="quick-play-btn" id="qp-go">
+                        <button type="button" class="quick-play-btn" id="qp-type-go" data-type="go">
                             <span class="qp-icon">⚫</span>
                             Го
                         </button>
                     </div>
+
+                    <div class="quick-play-options">
+                        <div class="input-group">
+                            <label for="qp-game-mode">Режим</label>
+                            <select id="qp-game-mode">
+                                <option value="rated" selected>Рейтинговая</option>
+                                <option value="unranked">Без рейтинга</option>
+                                <option value="casual">Свободная</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="qp-time-control">Время</label>
+                            <select id="qp-time-control">
+                                <option value="none" selected>Без ограничения</option>
+                                <option value="bullet1">Пуля · 1+0</option>
+                                <option value="bullet2">Пуля · 2+1</option>
+                                <option value="blitz3">Блиц · 3+0</option>
+                                <option value="blitz3_2">Блиц · 3+2</option>
+                                <option value="blitz5">Блиц · 5+0</option>
+                                <option value="rapid10">Рапид · 10+0</option>
+                                <option value="rapid15">Рапид · 15+10</option>
+                                <option value="classical30">Классика · 30+0</option>
+                            </select>
+                        </div>
+                        <div class="input-group qp-go-only" id="qp-go-rule-set-group" style="display:none;">
+                            <label for="qp-go-rule-set">Правила Го</label>
+                            <select id="qp-go-rule-set">
+                                <option value="chinese" selected>Китайские</option>
+                                <option value="japanese">Японские</option>
+                                <option value="korean">Корейские</option>
+                            </select>
+                        </div>
+                        <div class="input-group qp-go-only" id="qp-go-board-group" style="display:none;">
+                            <label for="qp-go-board">Доска Го</label>
+                            <select id="qp-go-board">
+                                <option value="small">Малая · 4×4×4</option>
+                                <option value="standard" selected>Стандартная · 6×6×6</option>
+                                <option value="large">Большая · 9×9×9</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="button" id="qp-find-btn" class="btn btn-primary quick-play-find-btn">Найти игру</button>
                     <div class="quick-play-status" id="quick-play-status"></div>
+                </div>
+
+                <div class="all-rooms-header">
+                    <h2>Открытые комнаты</h2>
+                    <button id="refresh-btn" class="btn btn-secondary btn-sm">Обновить</button>
+                </div>
+                <div id="room-list" class="room-list">
+                    <div class="no-rooms">Нет доступных комнат</div>
                 </div>
             </div>
 
@@ -352,22 +462,58 @@
                             <option value="go">Го</option>
                         </select>
                     </div>
+                    <div class="input-group">
+                        <label for="room-time-control">Контроль времени</label>
+                        <select id="room-time-control">
+                            <option value="none" selected>Без ограничения</option>
+                            <option value="bullet1">Пуля · 1+0</option>
+                            <option value="bullet2">Пуля · 2+1</option>
+                            <option value="blitz3">Блиц · 3+0</option>
+                            <option value="blitz3_2">Блиц · 3+2</option>
+                            <option value="blitz5">Блиц · 5+0</option>
+                            <option value="rapid10">Рапид · 10+0</option>
+                            <option value="rapid15">Рапид · 15+10</option>
+                            <option value="classical30">Классика · 30+0</option>
+                            <option value="custom">Своё время...</option>
+                        </select>
+                    </div>
+                    <div id="room-time-custom" class="time-custom-row" style="display:none;">
+                        <div class="input-group">
+                            <label for="room-time-custom-minutes">Минут на партию</label>
+                            <input type="number" id="room-time-custom-minutes" value="10" min="0.5" max="180" step="0.5">
+                        </div>
+                        <div class="input-group">
+                            <label for="room-time-custom-increment">Добавка, сек/ход</label>
+                            <input type="number" id="room-time-custom-increment" value="0" min="0" max="60">
+                        </div>
+                    </div>
                     <div id="go-options" style="display:none;">
                         <div class="input-group">
-                            <label for="room-board-x">Размер X</label>
-                            <input type="number" id="room-board-x" value="4" min="3" max="10">
+                            <label for="room-go-preset">Размер доски</label>
+                            <select id="room-go-preset">
+                                <option value="small">Малая · 4×4×4</option>
+                                <option value="standard" selected>Стандартная · 6×6×6</option>
+                                <option value="large">Большая · 9×9×9</option>
+                                <option value="custom">Своя...</option>
+                            </select>
                         </div>
-                        <div class="input-group">
-                            <label for="room-board-y">Размер Y</label>
-                            <input type="number" id="room-board-y" value="4" min="3" max="10">
-                        </div>
-                        <div class="input-group">
-                            <label for="room-board-z">Размер Z</label>
-                            <input type="number" id="room-board-z" value="4" min="3" max="10">
-                        </div>
-                        <div class="input-group">
-                            <label for="room-komi">Коми</label>
-                            <input type="number" id="room-komi" value="6.5" step="0.5" min="0" max="100">
+                        <div id="go-board-custom" style="display:none;">
+                            <div class="input-group">
+                                <label for="room-board-x">Размер X</label>
+                                <input type="number" id="room-board-x" value="4" min="3" max="10">
+                            </div>
+                            <div class="input-group">
+                                <label for="room-board-y">Размер Y</label>
+                                <input type="number" id="room-board-y" value="4" min="3" max="10">
+                            </div>
+                            <div class="input-group">
+                                <label for="room-board-z">Размер Z</label>
+                                <input type="number" id="room-board-z" value="4" min="3" max="10">
+                            </div>
+                            <div class="input-group">
+                                <label for="room-komi">Коми</label>
+                                <input type="number" id="room-komi" value="6.5" step="0.5" min="0" max="100">
+                            </div>
                         </div>
                         <div class="input-group">
                             <label for="room-rule-set">Правила</label>
@@ -379,6 +525,7 @@
                         </div>
                     </div>
                     <div id="chess-options">
+                        <p class="board-note">Доска: стандартная 3D 6×6×8</p>
                         <div class="checkbox-group">
                             <input type="checkbox" id="room-allow-spectators" checked>
                             <label for="room-allow-spectators">Разрешить зрителей</label>
@@ -436,17 +583,6 @@
                 </div>
                 <div id="my-rooms-grid" class="my-rooms-grid">
                     <div class="no-rooms">Нет активных комнат</div>
-                </div>
-            </div>
-
-            <!-- All Rooms -->
-            <div class="tab-content" id="tab-all-rooms">
-                <div class="all-rooms-header">
-                    <h2>Доступные комнаты</h2>
-                    <button id="refresh-btn" class="btn btn-secondary btn-sm">Обновить</button>
-                </div>
-                <div id="room-list" class="room-list">
-                    <div class="no-rooms">Нет доступных комнат</div>
                 </div>
             </div>
         </div>
