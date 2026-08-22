@@ -150,12 +150,19 @@ class Game {
     handleCanvasClick(event) {
         const cellCoords = GraphicsEngine.cellFromClick(event.clientX, event.clientY);
 
-        if (!cellCoords) return;
-
         if (this.networkManager && this.networkManager.isSpectator) return;
 
         // Не даём человеку ходить за сторону бота / пока бот думает
         if (this.isBotSideToMove() || this.botThinking) return;
+
+        if (!cellCoords) {
+            // Клик мимо доски целиком - тоже снимает выделение, как и клик по пустой клетке ниже
+            if (GraphicsEngine.highlightedCell) {
+                GraphicsEngine.unHighlightingPossibleMoves();
+                GraphicsEngine.unselectCell();
+            }
+            return;
+        }
 
         const { i, j, k } = cellCoords;
         const figure = ChessEngine.Pole[i][j][k];
@@ -192,7 +199,7 @@ class Game {
             // Выбираем эту фигуру
             GraphicsEngine.selectCell(i, j, k);
             GraphicsEngine.highlightingPossibleMoves(ChessEngine.MaybeMovesWithCheck(i, j, k, ChessEngine.Pole));
-        } else if (highlightedCell) {
+        } else if (GraphicsEngine.highlightedCell) {
             // Если есть выбранная клетка, но клик не на возможный ход - снимаем выделение
             GraphicsEngine.unHighlightingPossibleMoves();
             GraphicsEngine.unselectCell();
@@ -228,6 +235,14 @@ class Game {
         const panel = document.getElementById('bot-controls');
         if (!panel) return;
         panel.style.display = this.isNetworkGame ? 'none' : 'block';
+    }
+
+    // Сохранение/загрузка партии в файл имеет смысл только локально (в т.ч.
+    // с ботом) - в сетевой игре состояние ведёт сервер.
+    updateLocalFileActionsVisibility() {
+        const row = document.getElementById('local-file-actions');
+        if (!row) return;
+        row.style.display = this.isNetworkGame ? 'none' : 'flex';
     }
 
     // Оценка позиции движком бота — только в локальном режиме: в сетевой
@@ -464,11 +479,9 @@ class Game {
         this.maybeBotMove();
     }
 
-    undoMove() {
-        if (this.moveHistory.length == 0) return;
-
-        this.cancelBotSearch();
-
+    // Откатывает один полуход из moveHistory без побочных эффектов на UI/бота
+    // — undoMove() ниже вызывает это один или два раза за клик.
+    popLastMove() {
         const lastMove = this.moveHistory.pop();
         const {
             from, to, movedFigure, capturedFigure, movedFigureHadMoved,
@@ -506,6 +519,21 @@ class Game {
 
         // Меняем текущего игрока
         this.currentPlayer = this.currentPlayer === 'White' ? 'Black' : 'White';
+    }
+
+    undoMove() {
+        if (this.moveHistory.length == 0) return;
+
+        this.cancelBotSearch();
+
+        this.popLastMove();
+        // Против бота один откат хода игрока автоматически откатывает и его
+        // самого: иначе currentPlayer сразу же снова становится ходом бота,
+        // maybeBotMove() тут же делает ответный ход — и отмена внешне
+        // выглядит так, будто вообще ничего не произошло.
+        if (!this.isNetworkGame && this.botEnabled && this.botColor === this.currentPlayer && this.moveHistory.length > 0) {
+            this.popLastMove();
+        }
 
         createAndFillBoardOnPole(ChessEngine.Pole);
         // Проверяем состояние игры
@@ -582,6 +610,7 @@ class Game {
         // Обновляем историю ходов
         this.updateMoveHistory();
         this.updateBotPanelVisibility();
+        this.updateLocalFileActionsVisibility();
         this.updateEvaluationPanelVisibility();
         this.updateBotStatusUI();
     }
@@ -593,8 +622,8 @@ class Game {
 
         this.moveHistory.forEach((move, index) => {
             const moveElement = document.createElement('div');
-            moveElement.textContent = `${index + 1}. ${move.movedFigure.Color} ${move.movedFigure.Name}: 
-                (${move.from.x},${move.from.y},${move.from.z}) → 
+            moveElement.textContent = `${index + 1}. ${move.movedFigure.Color} ${move.movedFigure.Name}:
+                (${move.from.x},${move.from.y},${move.from.z}) →
                 (${move.to.x},${move.to.y},${move.to.z})`;
             historyList.appendChild(moveElement);
         });
@@ -837,6 +866,7 @@ class Game {
         this.isNetworkGame = true;
         this.cancelBotSearch();
         this.updateBotPanelVisibility();
+        this.updateLocalFileActionsVisibility();
         this.updateEvaluationPanelVisibility();
     }
 
@@ -848,6 +878,7 @@ class Game {
         this.updateNetworkStatus('Не подключено');
         this.showNetworkConnect();
         this.updateBotPanelVisibility();
+        this.updateLocalFileActionsVisibility();
         this.updateEvaluationPanelVisibility();
         this.maybeBotMove();
     }
@@ -1081,6 +1112,7 @@ class Game {
         this.isNetworkGame = true;
         this.cancelBotSearch();
         this.updateBotPanelVisibility();
+        this.updateLocalFileActionsVisibility();
         this.updateEvaluationPanelVisibility();
         document.getElementById('net-server-address').textContent = serverAddress;
         document.getElementById('net-room-id').textContent = roomId;
@@ -1172,6 +1204,7 @@ class Game {
         this.isNetworkGame = false;
         this.stopClockTicker();
         this.updateBotPanelVisibility();
+        this.updateLocalFileActionsVisibility();
         this.updateEvaluationPanelVisibility();
     }
 

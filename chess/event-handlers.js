@@ -28,6 +28,8 @@ document.addEventListener('DOMContentLoaded', function () {
         'load-settings': () => document.getElementById('settings-file-input').click(),
         'save-game': () => window.chessGame?.saveGame(),
         'load-game': () => document.getElementById('file-input').click(),
+        'save-game-action': () => window.chessGame?.saveGame(),
+        'load-game-action': () => document.getElementById('file-input').click(),
         'undo-move': () => {
             if (!window.chessGame?.isNetworkGame) {
                 window.chessGame?.undoMove();

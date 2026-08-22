@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', function () {
         'load-settings': () => document.getElementById('settings-file-input').click(),
         'save-game': () => window.goGame?.saveGame(),
         'load-game': () => document.getElementById('file-input').click(),
+        'save-game-action': () => window.goGame?.saveGame(),
+        'load-game-action': () => document.getElementById('file-input').click(),
         'new-game': () => window.goGame?.resetGame(),
         'evaluate-position': () => window.goGame?.evaluatePosition(),
         'pass-btn': () => window.goGame?.pass(),

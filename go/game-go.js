@@ -220,6 +220,13 @@ class GoGame {
         panel.style.display = this.isNetworkGame ? 'none' : 'block';
     }
 
+    // См. комментарий у одноимённого метода в chess/game.js.
+    updateLocalFileActionsVisibility() {
+        const row = document.getElementById('local-file-actions');
+        if (!row) return;
+        row.style.display = this.isNetworkGame ? 'none' : 'flex';
+    }
+
     // Только локальный режим — см. комментарий у одноимённого метода в chess/game.js.
     updateEvaluationPanelVisibility() {
         const panel = document.getElementById('evaluation-panel');
@@ -395,6 +402,14 @@ class GoGame {
         } else {
             this.cancelBotSearch();
             if (this.board.undo()) {
+                this.moveHistory.pop();
+                // Против бота один откат хода игрока автоматически откатывает
+                // и его самого: иначе ход сразу же снова оказывается за
+                // ботом, и maybeBotMove() тут же отвечает — отмена внешне
+                // выглядит так, будто вообще ничего не произошло.
+                if (this.isBotSideToMove() && this.board.undo()) {
+                    this.moveHistory.pop();
+                }
                 GraphicsEngine.createAndFillBoardForGo(this.board);
                 this.updateUI();
                 GraphicsEngine.unselectCell();
@@ -632,6 +647,7 @@ class GoGame {
 
         this.updateMoveHistory();
         this.updateBotPanelVisibility();
+        this.updateLocalFileActionsVisibility();
         this.updateEvaluationPanelVisibility();
         this.updateBotStatusUI();
     }
@@ -666,6 +682,7 @@ class GoGame {
         this.isNetworkGame = true;
         this.cancelBotSearch();
         this.updateBotPanelVisibility();
+        this.updateLocalFileActionsVisibility();
         this.updateEvaluationPanelVisibility();
     }
 
@@ -677,6 +694,7 @@ class GoGame {
         this.updateNetworkStatus('Не подключено');
         this.showNetworkConnect();
         this.updateBotPanelVisibility();
+        this.updateLocalFileActionsVisibility();
         this.updateEvaluationPanelVisibility();
         this.maybeBotMove();
     }
@@ -939,6 +957,7 @@ class GoGame {
         this.isNetworkGame = true;
         this.cancelBotSearch();
         this.updateBotPanelVisibility();
+        this.updateLocalFileActionsVisibility();
         this.updateEvaluationPanelVisibility();
         document.getElementById('net-server-address').textContent = serverAddress;
         document.getElementById('net-room-id').textContent = roomId;
@@ -1031,6 +1050,7 @@ class GoGame {
         this.isNetworkGame = false;
         this.stopClockTicker();
         this.updateBotPanelVisibility();
+        this.updateLocalFileActionsVisibility();
         this.updateEvaluationPanelVisibility();
     }
 

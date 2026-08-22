@@ -132,6 +132,12 @@
                     <button id="pass-btn" class="game-btn">Пас</button>
                     <button id="local-resign-btn" class="game-btn">Сдаться</button>
                 </div>
+                <!-- Только для локальной игры (в т.ч. с ботом) - в сетевой игре
+                     сохранение/загрузка бессмысленны, состояние ведёт сервер. -->
+                <div class="buttons-row" id="local-file-actions" style="margin-top:8px;">
+                    <button id="save-game-action" class="game-btn">Сохранить игру</button>
+                    <button id="load-game-action" class="game-btn">Загрузить игру</button>
+                </div>
             </div>
         </div>
 

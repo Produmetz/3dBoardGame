@@ -127,6 +127,12 @@
                     <button id="new-game" class="game-btn">Новая игра</button>
                     <button id="undo-move" class="game-btn">Отменить ход</button>
                 </div>
+                <!-- Только для локальной игры (в т.ч. с ботом) - в сетевой игре
+                     сохранение/загрузка бессмысленны, состояние ведёт сервер. -->
+                <div class="buttons-row" id="local-file-actions" style="margin-top:8px;">
+                    <button id="save-game-action" class="game-btn">Сохранить игру</button>
+                    <button id="load-game-action" class="game-btn">Загрузить игру</button>
+                </div>
             </div>
         </div>
 
